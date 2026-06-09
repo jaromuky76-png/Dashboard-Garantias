@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: dashboard-ot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.0
+      # Descomenta las siguientes líneas si compras el "Disco Persistente" en Render
+      # - key: OT_BASE_DIR
+      #   value: /var/lib/data/OT
+    # disk:
+    #   name: data
+    #   mountPath: /var/lib/data
+    #   sizeGB: 1

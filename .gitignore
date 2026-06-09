@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual Env
+venv/
+.env
+
+# Temporal Uploads
+temp_upload.xlsx
+
+# System
+.DS_Store
+Thumbs.db

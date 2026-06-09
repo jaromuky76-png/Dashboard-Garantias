@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sugerido de Compras - OT</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { dark: '#0f172a', card: '#1e293b', primary: '#3b82f6', secondary: '#8b5cf6', success: '#10b981', danger: '#ef4444' } } }
+        }
+    </script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Inter', system-ui, sans-serif; }
+        .glass-card { background: rgba(30,41,59,0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        table { border-collapse: separate; border-spacing: 0; width: 100%; }
+        th, td { padding: 11px 14px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        th { background-color: rgba(0,0,0,0.2); font-weight:600; color:#94a3b8; text-transform:uppercase; font-size:0.7rem; letter-spacing:.05em; }
+        td { color:#cbd5e1; }
+        .badge-new      { background:rgba(16,185,129,0.15); color:#6ee7b7; padding:3px 8px; border-radius:9999px; font-size:.7rem; font-weight:600; }
+        .badge-ordered  { background:rgba(59,130,246,0.15); color:#93c5fd; padding:3px 8px; border-radius:9999px; font-size:.7rem; font-weight:600; }
+        .badge-high     { background:rgba(239,68,68,0.15);  color:#fca5a5; padding:3px 8px; border-radius:9999px; font-size:.7rem; font-weight:600; }
+        .badge-med      { background:rgba(245,158,11,0.15); color:#fcd34d; padding:3px 8px; border-radius:9999px; font-size:.7rem; font-weight:600; }
+        .badge-low      { background:rgba(100,116,139,0.2); color:#94a3b8; padding:3px 8px; border-radius:9999px; font-size:.7rem; font-weight:600; }
+        tr.already-ordered td { opacity: 0.45; }
+        tr.row-selected { background: rgba(59,130,246,0.07); }
+    </style>
+</head>
+<body class="min-h-screen p-6">
+<div class="max-w-7xl mx-auto space-y-6">
+
+    <!-- Header -->
+    <header class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-success to-blue-500">Sugerido de Compras de Repuestos</h1>
+            <p class="text-slate-400 mt-1">Análisis de Frecuencia y Volumen · Gestión de Pedidos</p>
+            <nav class="flex space-x-4 mt-4">
+                <a href="index.html"    class="text-slate-400 hover:text-blue-400 transition-colors pb-1">Garantías</a>
+                <a href="servicio.html" class="text-slate-400 hover:text-teal-400 transition-colors pb-1">Servicios</a>
+                <a href="repuestos.html" class="text-success border-b-2 border-success pb-1 font-medium">Sugerido de Compras</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- KPIs -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="glass-card p-5 border-l-4 border-l-success">
+            <h3 class="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Total Unidades Pedidas</h3>
+            <p id="kpi-total-parts" class="text-3xl font-bold text-white">0</p>
+        </div>
+        <div class="glass-card p-5 border-l-4 border-l-blue-500">
+            <h3 class="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Repuestos Únicos</h3>
+            <p id="kpi-unique-parts" class="text-3xl font-bold text-white">0</p>
+        </div>
+        <div class="glass-card p-5 border-l-4 border-l-yellow-500">
+            <h3 class="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Órdenes Únicas (Demanda)</h3>
+            <p id="kpi-ots-count" class="text-3xl font-bold text-white">0</p>
+        </div>
+        <div class="glass-card p-5 border-l-4 border-l-purple-500">
+            <h3 class="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Items para Pedir Ahora</h3>
+            <p id="kpi-to-order" class="text-3xl font-bold text-emerald-400">0</p>
+        </div>
+    </div>
+
+    <!-- Filtros Período / Marca -->
+    <div class="glass-card p-5 border border-blue-500/20">
+        <div class="flex flex-wrap items-end gap-4">
+            <div>
+                <p class="text-xs text-slate-400 uppercase font-semibold mb-1">Período — Desde</p>
+                <div class="flex gap-2">
+                    <select id="period-from-month" class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                        <option value="0">Todos</option>
+                    </select>
+                    <select id="period-from-year" class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                        <option value="ALL">Todos</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <p class="text-xs text-slate-400 uppercase font-semibold mb-1">Hasta</p>
+                <div class="flex gap-2">
+                    <select id="period-to-month" class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                        <option value="0">Todos</option>
+                    </select>
+                    <select id="period-to-year" class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                        <option value="ALL">Todos</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <p class="text-xs text-slate-400 uppercase font-semibold mb-1">Marca</p>
+                <select id="filter-brand" class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 min-w-[160px]">
+                    <option value="ALL">Todas las Marcas</option>
+                </select>
+            </div>
+            <button onclick="applyPeriodAndBrandFilter()"
+                class="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-5 py-2 rounded-lg text-sm transition-all flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6z"/></svg>
+                Aplicar Filtros
+            </button>
+            <p id="filter-summary" class="text-xs text-slate-500 self-end pb-2"></p>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="glass-card p-6">
+            <h2 class="text-xl font-bold text-white mb-4">Repuestos con Mayor Frecuencia</h2>
+            <div class="relative w-full" style="height:256px"><canvas id="partsByBrandChart"></canvas></div>
+        </div>
+        <div class="glass-card p-6">
+            <h2 class="text-xl font-bold text-white mb-4">Top 5 Sugeridos por Cantidad</h2>
+            <div class="relative w-full" style="height:256px"><canvas id="topPartsChart"></canvas></div>
+        </div>
+    </div>
+
+    <!-- ════════════════ CORTE DE PEDIDO ════════════════ -->
+    <div class="glass-card p-6 border border-emerald-500/30 bg-emerald-950/20">
+        <div class="flex flex-col md:flex-row md:items-center gap-6">
+            <div class="flex-shrink-0">
+                <div class="flex items-center gap-3 mb-1">
+                    <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2M9 12l2 2 4-4"/></svg>
+                    <h2 class="text-lg font-bold text-white">Gestión de Pedido</h2>
+                </div>
+                <p class="text-slate-400 text-sm">Define el corte del último pedido realizado. Los ítems ya pedidos se excluirán del nuevo pedido.</p>
+            </div>
+
+            <!-- Controles -->
+            <div class="flex flex-wrap items-end gap-4 flex-1">
+                <!-- Último corte -->
+                <div>
+                    <label class="text-xs text-slate-400 uppercase font-semibold block mb-1">Último pedido hasta</label>
+                    <div class="flex gap-2">
+                        <select id="cutoff-month" class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+                            <option value="0">-- Mes --</option>
+                            <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+                            <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+                            <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+                            <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+                        </select>
+                        <input id="cutoff-year" type="number" min="2020" max="2030" placeholder="Año" value="2026"
+                            class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white w-24 focus:outline-none focus:border-emerald-500">
+                    </div>
+                </div>
+
+                <!-- Acciones -->
+                <button id="btn-apply-cutoff" onclick="applyCutoff()"
+                    class="bg-emerald-700 hover:bg-emerald-600 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-all flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6z"/></svg>
+                    Aplicar Corte
+                </button>
+
+                <button id="btn-generate-order" onclick="generateOrder()"
+                    class="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-all flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    Descargar Pedido Nuevo (.xlsx)
+                </button>
+
+                <button id="btn-mark-ordered" onclick="confirmOrderPlaced()"
+                    class="bg-slate-700 hover:bg-slate-600 border border-slate-500 text-slate-200 font-semibold px-4 py-2 rounded-lg text-sm transition-all flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    Confirmar Pedido Realizado
+                </button>
+
+                <button onclick="resetOrderHistory()"
+                    class="text-xs text-slate-500 hover:text-red-400 transition-colors underline self-end pb-0.5">
+                    Limpiar historial
+                </button>
+            </div>
+        </div>
+
+        <!-- Status bar -->
+        <div id="cutoff-status" class="mt-4 p-3 rounded-lg bg-slate-800/60 text-sm text-slate-300 hidden"></div>
+    </div>
+
+    <!-- Tabla Detalle -->
+    <div class="glass-card p-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+            <h2 class="text-xl font-bold text-white">Lista de Reposición de Inventario</h2>
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- Filtro estado -->
+                <select id="filter-status" class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                    <option value="ALL">Todos los ítems</option>
+                    <option value="NEW">Solo nuevos (para pedir)</option>
+                    <option value="ORDERED">Solo ya pedidos</option>
+                </select>
+                <!-- Búsqueda -->
+                <div class="relative">
+                    <input type="text" id="search-input" placeholder="Buscar código o descripción..." class="bg-card border border-slate-600 rounded-lg pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500 w-56">
+                    <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+                <!-- Export all -->
+                <button id="btn-export-all" class="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 border border-slate-500 text-slate-200 font-semibold px-4 py-2 rounded-lg text-sm transition-all">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    Exportar Vista Actual
+                </button>
+            </div>
+        </div>
+        <p id="table-row-count" class="text-xs text-slate-500 mb-3"></p>
+        <div class="overflow-x-auto">
+            <table id="parts-table">
+                <thead>
+                    <tr>
+                        <th class="w-8"><input type="checkbox" id="select-all-chk" class="accent-emerald-500 cursor-pointer"></th>
+                        <th>Marca</th>
+                        <th>Código/ID</th>
+                        <th>Descripción del Repuesto</th>
+                        <th class="text-center">Frecuencia (OTs)</th>
+                        <th class="text-center">Cant. Total</th>
+                        <th>Mes y Nro. OT</th>
+                        <th class="text-center">Prioridad</th>
+                        <th class="text-center">Estado Pedido</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <tr><td colspan="8" class="text-center py-8 text-slate-500 italic">Cargando datos...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <!-- Barra inferior de selección -->
+        <div id="selection-bar" class="hidden mt-4 p-3 rounded-lg bg-blue-900/30 border border-blue-500/30 flex items-center justify-between">
+            <span id="selection-count" class="text-sm text-blue-300 font-semibold"></span>
+            <div class="flex gap-3">
+                <button onclick="exportSelection()" class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-3 py-1.5 rounded-lg transition-all">Exportar Selección</button>
+                <button onclick="clearSelection()" class="text-slate-400 hover:text-white text-sm transition-all">Deseleccionar</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+<script>
+    // Cache-buster: fuerza recarga del archivo de datos
+    const _v = Date.now();
+    document.write('<scr'+'ipt src="parts_data.js?v='+_v+'"><\/scr'+'ipt>');
+    document.write('<scr'+'ipt src="repuestos_app.js?v='+_v+'"><\/scr'+'ipt>');
+</script>
+</body>
+</html>

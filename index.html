@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Garantías - OT</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: '#0f172a',
+                        card: '#1e293b',
+                        primary: '#3b82f6',
+                        secondary: '#8b5cf6',
+                        success: '#10b981',
+                        danger: '#ef4444'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- SheetJS (Excel Parser) -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom CSS -->
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .file-drop-area {
+            border: 2px dashed rgba(59, 130, 246, 0.5);
+            transition: all 0.3s ease;
+        }
+        .file-drop-area.dragover {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+        }
+        .file-drop-area.processing {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        table {
+            border-collapse: separate;
+            border-spacing: 0;
+            width: 100%;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        th {
+            background-color: rgba(0, 0, 0, 0.2);
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+        td {
+            color: #cbd5e1;
+        }
+        .badge {
+            padding: 4px 8px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .badge-total { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+        .badge-parcial { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
+        
+        /* Loading animation */
+        .loader {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-left-color: #3b82f6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-6">
+    <div class="max-w-7xl mx-auto space-y-6">
+        
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">
+                    Dashboard Estado de OT
+                </h1>
+                <p class="text-slate-400 mt-1">Análisis de Garantías por Marca y Producto (RMS)</p>
+                <nav class="flex space-x-4 mt-4">
+                    <a href="index.html" class="text-blue-400 border-b-2 border-blue-400 pb-1 font-medium">Garantías</a>
+                    <a href="servicio.html" class="text-slate-400 hover:text-teal-400 transition-colors pb-1">Servicios</a>
+                    <a href="repuestos.html" class="text-slate-400 hover:text-green-400 transition-colors pb-1">Sugerido de Compras</a>
+                </nav>
+            </div>
+            
+            <div class="flex space-x-4 items-center">
+                <!-- Dropzone -->
+                <div id="drop-area" class="file-drop-area rounded-lg p-4 cursor-pointer flex flex-col items-center justify-center relative overflow-hidden group hover:border-blue-400">
+                    <input type="file" id="file-input" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" multiple accept=".xlsx, .xls">
+                    <!-- Directory selection input for modern browsers -->
+                    <input type="file" id="folder-input" class="hidden" webkitdirectory directory multiple>
+                    
+                    <div id="drop-content" class="text-center transition-all">
+                        <svg class="w-8 h-8 text-blue-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                        <p class="text-sm font-medium text-slate-200">Arrastra archivos Excel aquí</p>
+                        <p class="text-xs text-slate-400 mt-1">o haz clic para explorar</p>
+                    </div>
+                </div>
+                
+                <button id="btn-folder" class="bg-card hover:bg-slate-700 text-slate-200 border border-slate-600 px-4 py-3 rounded-lg text-sm font-medium transition-colors shadow-lg flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                    Seleccionar Carpeta
+                </button>
+            </div>
+        </header>
+
+        <!-- Loading State Indicator -->
+        <div id="loading" class="hidden flex items-center justify-center py-8 glass-card">
+            <div class="loader mr-3"></div>
+            <span class="text-blue-400 font-medium">Procesando archivos Excel...</span>
+        </div>
+
+        <!-- Filtros de Período -->
+        <div class="glass-card p-4 flex flex-wrap gap-4 items-center">
+            <span class="text-slate-400 font-medium text-sm uppercase tracking-wide">Filtro de Período:</span>
+            
+            <select id="filter-year" class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                <option value="ALL">Todos los Años</option>
+                <!-- Se llena con JS -->
+            </select>
+            
+            <select id="filter-month" class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                <option value="ALL">Todos los Meses</option>
+                <!-- Se llena con JS -->
+            </select>
+            
+            <button id="btn-apply-filter" class="bg-blue-600 hover:bg-blue-500 text-white font-medium px-4 py-2 rounded-lg text-sm transition-colors shadow-lg">
+                Aplicar Filtro
+            </button>
+        </div>
+
+        <!-- KPIs -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div class="glass-card p-6 border-l-4 border-l-blue-500">
+                <h3 class="text-slate-400 text-sm font-semibold uppercase tracking-wider mb-2">Archivos Procesados</h3>
+                <p id="kpi-files" class="text-3xl font-bold text-white">0</p>
+            </div>
+            <div class="glass-card p-6 border-l-4 border-l-purple-500">
+                <h3 class="text-slate-400 text-sm font-semibold uppercase tracking-wider mb-2">Total OTs Evaluadas</h3>
+                <p id="kpi-rows" class="text-3xl font-bold text-white">0</p>
+            </div>
+            <div class="glass-card p-6 border-l-4 border-l-red-500">
+                <h3 class="text-slate-400 text-sm font-semibold uppercase tracking-wider mb-2">Garantías Totales</h3>
+                <p id="kpi-total" class="text-3xl font-bold text-white">0</p>
+            </div>
+            <div class="glass-card p-6 border-l-4 border-l-yellow-500">
+                <h3 class="text-slate-400 text-sm font-semibold uppercase tracking-wider mb-2">Garantías Parciales</h3>
+                <p id="kpi-parcial" class="text-3xl font-bold text-white">0</p>
+            </div>
+        </div>
+
+        <!-- Main Chart Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Brands Chart -->
+            <div class="glass-card p-6 lg:col-span-2">
+                <h2 class="text-xl font-bold text-white mb-4">Garantías por Marca</h2>
+                <div class="relative h-80 w-full">
+                    <canvas id="brandChart"></canvas>
+                </div>
+            </div>
+
+            <!-- "Hall of Shame" or Bad Products Highlight -->
+            <div class="glass-card p-6 flex flex-col h-full">
+                <div class="flex justify-between items-start mb-4">
+                    <h2 class="text-xl font-bold text-red-500 flex items-center">
+                        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        Alerta Crítica
+                    </h2>
+                    <select id="brand-alert-filter" class="bg-slate-800 border border-slate-700 rounded text-xs px-2 py-1 text-slate-300 focus:outline-none focus:border-blue-500">
+                        <option value="ALL">Todas las Marcas</option>
+                    </select>
+                </div>
+                <p class="text-slate-400 text-sm mb-4">Top 5 productos con mayor incidencia de fallas.</p>
+                
+                <div id="worst-products-list" class="flex-grow space-y-3">
+                    <!-- Dynamic list will go here -->
+                    <p class="text-slate-500 text-center text-sm py-8">Esperando datos...</p>
+                </div>
+            </div>
+            
+        </div>
+
+        <!-- Brand Comparator Section -->
+        <div class="glass-card p-8 border-t-4 border-t-success/50">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-8">
+                <div>
+                    <h2 class="text-2xl font-bold text-white mb-1">Comparador de Marcas Homólogas</h2>
+                    <p class="text-slate-400 text-sm">Compare métricas de confiabilidad entre dos marcas para decidir su próxima compra.</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 relative">
+                <!-- VS Divider -->
+                <div class="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-dark border-2 border-slate-700 rounded-full items-center justify-center z-10">
+                    <span class="text-slate-500 font-black text-xl italic">VS</span>
+                </div>
+
+                <!-- Brand A -->
+                <div class="space-y-6">
+                    <select id="compare-brand-a" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white font-semibold focus:outline-none focus:border-blue-500 transition-all shadow-xl">
+                        <option value="">Seleccione Marca A</option>
+                    </select>
+                    <div id="compare-result-a" class="bg-slate-800/40 rounded-xl p-6 border border-slate-700/50 min-h-[300px]">
+                        <p class="text-slate-500 text-center py-12">Seleccione una marca para comparar</p>
+                    </div>
+                </div>
+
+                <!-- Brand B -->
+                <div class="space-y-6">
+                    <select id="compare-brand-b" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white font-semibold focus:outline-none focus:border-purple-500 transition-all shadow-xl">
+                        <option value="">Seleccione Marca B</option>
+                    </select>
+                    <div id="compare-result-b" class="bg-slate-800/40 rounded-xl p-6 border border-slate-700/50 min-h-[300px]">
+                        <p class="text-slate-500 text-center py-12">Seleccione una marca para comparar</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detail Table -->
+        <div class="glass-card p-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-3">
+                <h2 class="text-xl font-bold text-white">Detalle de Productos Defectuosos</h2>
+                <div class="flex flex-wrap items-center gap-3">
+                    <!-- Filtro por marca -->
+                    <select id="table-brand-filter" class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-all">
+                        <option value="ALL">Todas las Marcas</option>
+                    </select>
+                    <!-- Búsqueda libre -->
+                    <div class="relative">
+                        <input type="text" id="search-input" placeholder="Buscar por RMS, descripción..." class="bg-card border border-slate-600 rounded-lg pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500 w-56">
+                        <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </div>
+                    <!-- Botón Exportar Excel -->
+                    <button id="btn-export-excel" onclick="exportFilteredToExcel()"
+                        class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-all shadow-lg shadow-emerald-900/40">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        Descargar Excel
+                    </button>
+                </div>
+            </div>
+            <!-- Indicador de filas mostradas -->
+            <p id="table-row-count" class="text-xs text-slate-500 mb-3"></p>
+            <div class="overflow-x-auto">
+                <table id="products-table">
+                    <thead>
+                        <tr>
+                            <th>Marca</th>
+                            <th>RMS</th>
+                            <th>Descripción</th>
+                            <th class="text-center">Garantía Parcial</th>
+                            <th class="text-center">Garantía Total</th>
+                            <th class="text-center">Total Reclamos</th>
+                            <th>Mes y Nro. OT</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <tr>
+                            <td colspan="6" class="text-center py-8 text-slate-500">Cargue archivos para ver los detalles.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Modal Selección Unidad de Negocio -->
+    <div id="unit-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm">
+        <div class="glass-card p-6 rounded-xl max-w-sm w-full mx-4 shadow-2xl border border-slate-600 animate-fadeIn">
+            <h3 class="text-xl font-bold text-white mb-2">Seleccionar Unidad de Negocio</h3>
+            <p class="text-sm text-slate-400 mb-6">¿A qué unidad de negocio pertenecen los archivos que está subiendo?</p>
+            <div class="space-y-3">
+                <button id="btn-unit-cs" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-lg transition-colors shadow-lg">Unidad CS</button>
+                <button id="btn-unit-maestros" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-semibold py-3 rounded-lg transition-colors shadow-lg">Unidad MAESTROS</button>
+                <button id="btn-unit-cancel" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-300 font-semibold py-2 rounded-lg transition-colors mt-2">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pre-loaded Data (dashboard_updater.py — 15 meses: 2025 completo + 2026 Ene-Mar) -->
+    <script src="data.js?v=6"></script>
+    <!-- Application Logic -->
+    <script src="app.js?v=6"></script>
+</body>
+</html>

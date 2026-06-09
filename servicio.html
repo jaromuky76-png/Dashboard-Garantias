@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Servicios - OT</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: '#0f172a',
+                        card: '#1e293b',
+                        primary: '#3b82f6',
+                        secondary: '#8b5cf6',
+                        success: '#10b981',
+                        danger: '#ef4444',
+                        teal: '#14b8a6'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- SheetJS (Excel export) -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom CSS -->
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+        }
+        .file-drop-area {
+            border: 2px dashed rgba(20, 184, 166, 0.5);
+            transition: all 0.3s ease;
+        }
+        .file-drop-area.dragover  { border-color: #14b8a6; background: rgba(20,184,166,0.1); }
+        .file-drop-area.processing { opacity: 0.5; pointer-events: none; }
+        table { border-collapse: separate; border-spacing: 0; width: 100%; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        th {
+            background-color: rgba(0,0,0,0.2);
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+        td { color: #cbd5e1; }
+        .badge-svc { background: rgba(20,184,166,0.2); color: #5eead4; padding: 4px 8px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+        .loader { border: 4px solid rgba(255,255,255,0.1); border-left-color: #14b8a6; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+        .animate-fadeIn { animation: fadeIn 0.4s ease-out forwards; }
+    </style>
+</head>
+<body class="min-h-screen p-6">
+    <div class="max-w-7xl mx-auto space-y-6">
+
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-teal-400 to-cyan-500">
+                    Dashboard de Servicios
+                </h1>
+                <p class="text-slate-400 mt-1">Análisis de Órdenes de Servicio Técnico por Marca y Producto</p>
+                <nav class="flex space-x-4 mt-4">
+                    <a href="index.html"    class="text-slate-400 hover:text-blue-400 transition-colors pb-1">Garantías</a>
+                    <a href="servicio.html" class="text-teal-400 border-b-2 border-teal-400 pb-1 font-medium">Servicios</a>
+                    <a href="repuestos.html" class="text-slate-400 hover:text-green-400 transition-colors pb-1">Sugerido de Compras</a>
+                </nav>
+            </div>
+
+            <div class="flex space-x-4 items-center">
+                <!-- Dropzone -->
+                <div id="drop-area" class="file-drop-area rounded-lg p-4 cursor-pointer flex flex-col items-center justify-center relative overflow-hidden group hover:border-teal-400">
+                    <input type="file"   id="file-input"   class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" multiple accept=".xlsx,.xls">
+                    <input type="file"   id="folder-input" class="hidden" webkitdirectory directory multiple>
+                    <div id="drop-content" class="text-center transition-all">
+                        <svg class="w-8 h-8 text-teal-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                        <p class="text-sm font-medium text-slate-200">Arrastra archivos Excel aquí</p>
+                        <p class="text-xs text-slate-400 mt-1">o haz clic para explorar</p>
+                    </div>
+                </div>
+                <button id="btn-folder" class="bg-card hover:bg-slate-700 text-slate-200 border border-slate-600 px-4 py-3 rounded-lg text-sm font-medium transition-colors shadow-lg flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                    Seleccionar Carpeta
+                </button>
+            </div>
+        </header>
+
+        <!-- Loading -->
+        <div id="loading" class="hidden flex items-center justify-center py-8 glass-card">
+            <div class="loader mr-3"></div>
+            <span class="text-teal-400 font-medium">Procesando archivos Excel...</span>
+        </div>
+
+        <!-- KPIs -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div class="glass-card p-6 border-l-4 border-l-teal-500">
+                <h3 class="text-slate-400 text-sm font-semibold uppercase tracking-wider mb-2">Archivos Procesados</h3>
+                <p id="kpi-files" class="text-3xl font-bold text-white">0</p>
+            </div>
+            <div class="glass-card p-6 border-l-4 border-l-cyan-500">
+                <h3 class="text-slate-400 text-sm font-semibold uppercase tracking-wider mb-2">Total Servicios</h3>
+                <p id="kpi-total" class="text-3xl font-bold text-white">0</p>
+            </div>
+            <div class="glass-card p-6 border-l-4 border-l-blue-500">
+                <h3 class="text-slate-400 text-sm font-semibold uppercase tracking-wider mb-2">Marcas con Servicio</h3>
+                <p id="kpi-marcas" class="text-3xl font-bold text-white">0</p>
+            </div>
+            <div class="glass-card p-6 border-l-4 border-l-purple-500">
+                <h3 class="text-slate-400 text-sm font-semibold uppercase tracking-wider mb-2">Productos Únicos</h3>
+                <p id="kpi-productos" class="text-3xl font-bold text-white">0</p>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <!-- Servicios por Marca -->
+            <div class="glass-card p-6 lg:col-span-2">
+                <h2 class="text-xl font-bold text-white mb-4">Servicios por Marca</h2>
+                <div class="relative h-80 w-full">
+                    <canvas id="brandChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Top Productos -->
+            <div class="glass-card p-6 flex flex-col h-full">
+                <div class="flex justify-between items-start mb-4">
+                    <h2 class="text-xl font-bold text-teal-400 flex items-center">
+                        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                        Más Solicitados
+                    </h2>
+                    <select id="brand-top-filter" class="bg-slate-800 border border-slate-700 rounded text-xs px-2 py-1 text-slate-300 focus:outline-none focus:border-teal-500">
+                        <option value="ALL">Todas las Marcas</option>
+                    </select>
+                </div>
+                <p class="text-slate-400 text-sm mb-4">Top 5 productos con más solicitudes de servicio.</p>
+                <div id="top-products-list" class="flex-grow space-y-3">
+                    <p class="text-slate-500 text-center text-sm py-8">Esperando datos...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comparador de Marcas -->
+        <div class="glass-card p-8 border-t-4 border-t-teal-500/50">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-8">
+                <div>
+                    <h2 class="text-2xl font-bold text-white mb-1">Comparador de Marcas</h2>
+                    <p class="text-slate-400 text-sm">Compare el volumen de servicios técnicos entre dos marcas.</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 relative">
+                <!-- VS Divider -->
+                <div class="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-dark border-2 border-slate-700 rounded-full items-center justify-center z-10">
+                    <span class="text-slate-500 font-black text-xl italic">VS</span>
+                </div>
+                <!-- Marca A -->
+                <div class="space-y-6">
+                    <select id="compare-brand-a" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white font-semibold focus:outline-none focus:border-teal-500 transition-all shadow-xl">
+                        <option value="">Seleccione Marca A</option>
+                    </select>
+                    <div id="compare-result-a" class="bg-slate-800/40 rounded-xl p-6 border border-slate-700/50 min-h-[220px]">
+                        <p class="text-slate-500 text-center py-12">Seleccione una marca para comparar</p>
+                    </div>
+                </div>
+                <!-- Marca B -->
+                <div class="space-y-6">
+                    <select id="compare-brand-b" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white font-semibold focus:outline-none focus:border-purple-500 transition-all shadow-xl">
+                        <option value="">Seleccione Marca B</option>
+                    </select>
+                    <div id="compare-result-b" class="bg-slate-800/40 rounded-xl p-6 border border-slate-700/50 min-h-[220px]">
+                        <p class="text-slate-500 text-center py-12">Seleccione una marca para comparar</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de detalle -->
+        <div class="glass-card p-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-3">
+                <h2 class="text-xl font-bold text-white">Detalle de Servicios por Producto</h2>
+                <div class="flex flex-wrap items-center gap-3">
+                    <!-- Rango de fechas -->
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs text-slate-400 whitespace-nowrap">Desde:</label>
+                        <input type="date" id="date-from" class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-teal-500">
+                        <label class="text-xs text-slate-400 whitespace-nowrap">Hasta:</label>
+                        <input type="date" id="date-to" class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-teal-500">
+                        <button onclick="applyTableFilters()" class="bg-teal-700 hover:bg-teal-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all">
+                            Filtrar
+                        </button>
+                        <button onclick="clearTableFilters()" class="text-xs text-slate-500 hover:text-white transition-all">
+                            Limpiar
+                        </button>
+                    </div>
+                    <select id="table-brand-filter" class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-teal-500 transition-all">
+                        <option value="ALL">Todas las Marcas</option>
+                    </select>
+                    <div class="relative">
+                        <input type="text" id="search-input" placeholder="Buscar por RMS, descripción..." class="bg-card border border-slate-600 rounded-lg pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:border-teal-500 w-56">
+                        <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </div>
+                    <button onclick="exportFilteredToExcel()"
+                        class="flex items-center gap-2 bg-teal-600 hover:bg-teal-500 active:scale-95 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-all shadow-lg shadow-teal-900/40">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        Descargar Excel
+                    </button>
+                </div>
+            </div>
+            <p id="table-row-count" class="text-xs text-slate-500 mb-3"></p>
+            <div class="overflow-x-auto">
+                <table id="products-table">
+                    <thead>
+                        <tr>
+                            <th>Marca</th>
+                            <th>RMS</th>
+                            <th>Descripción</th>
+                            <th class="text-center">Fecha Ingreso</th>
+                            <th class="text-center">Tipo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <tr><td colspan="5" class="text-center py-8 text-slate-500">Cargue archivos para ver los detalles.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Pre-loaded Service Data (dashboard_updater.py — 15 meses) -->
+    <script src="servicio_data.js"></script>
+    <!-- Application Logic -->
+    <script src="servicio_app.js"></script>
+</body>
+</html>
