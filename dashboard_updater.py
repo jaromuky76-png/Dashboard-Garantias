@@ -248,6 +248,12 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
     except Exception as e:
         print(f"Error procesando {filepath}: {e}")
         import traceback; traceback.print_exc()
+    finally:
+        try:
+            if 'wb' in locals() and wb:
+                wb.close()
+        except:
+            pass
 
     # Guardar los 3 archivos
     save_json(output_js, 'PRELOADED_DATA', garantia_data, "Garantias")
