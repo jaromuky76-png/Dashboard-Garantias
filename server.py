@@ -157,8 +157,14 @@ class DashboardServer(SimpleHTTPRequestHandler):
                     if status.stdout.strip():
                         commit_msg = f"Update data from web upload: {u} {m} {a}"
                         subprocess.run(["git", "commit", "-m", commit_msg], cwd=BASE_DIR, check=False)
+                        
+                        token = os.environ.get("GITHUB_TOKEN")
+                        if token:
+                            repo_url = f"https://jaromuky76-png:{token}@github.com/jaromuky76-png/Dashboard-Garantias.git"
+                            subprocess.run(["git", "remote", "set-url", "origin", repo_url], cwd=BASE_DIR, check=False)
+                            
                         # Push (requiere que el origin este configurado correctamente con credenciales o token)
-                        push_res = subprocess.run(["git", "push", "origin", "HEAD:main"], cwd=BASE_DIR, capture_output=True, text=True)
+                        push_res = subprocess.run(["git", "push", "origin", "HEAD:master"], cwd=BASE_DIR, capture_output=True, text=True)
                         if push_res.returncode == 0:
                             print("GitHub sincronizado exitosamente.")
                         else:
