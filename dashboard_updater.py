@@ -183,14 +183,13 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
             ot_sheet_name = wb.sheetnames[0]
             
         ot_sheet = wb[ot_sheet_name]
-        ot_rows = list(ot_sheet.iter_rows(values_only=True))
-        ot_headers, ot_h_idx = None, -1
+        ot_iterator = ot_sheet.iter_rows(values_only=True)
+        ot_headers = None
         
-        for row_idx, row in enumerate(ot_rows):
+        for row in ot_iterator:
             row_list = list(row)
             if any(v and (str(v).strip().upper() == 'MARCA' or 'TIPO DE GARANTIA' in str(v).upper()) for v in row_list):
                 ot_headers = row_list
-                ot_h_idx = row_idx
                 break
                 
         if ot_headers:
@@ -206,8 +205,7 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
             acep_i = h.get('ACEPTACION', -1)
             link_i = h.get('LINK OT DIGITAL', -1)
             
-            for row_idx, row in enumerate(ot_rows):
-                if row_idx <= ot_h_idx: continue
+            for row in ot_iterator:
                 row = list(row)
                 
                 tipo = safe_str(row[tipo_i] if tipo_i >= 0 else None).upper()
