@@ -133,11 +133,24 @@ def load_existing_json(filepath, var_name):
         print(f"Error cargando {filepath}: {e}")
     return []
 
-def save_json(filepath, var_name, data, desc):
+def save_json(filepath, var_name, data, desc, meta_var_name):
     try:
+        archivos = set()
+        for row in data:
+            u = row.get('unidad_negocio', '')
+            a = row.get('anio', '')
+            m = row.get('mes', '')
+            archivos.add(f"{u}-{a}-{m}")
+            
+        meta = {
+            "totalRegistros": len(data),
+            "archivosProcessados": len(archivos),
+            "errores": 0
+        }
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(f"// Generado por dashboard_updater.py -- {desc}\n")
             f.write(f"window.{var_name} = {json.dumps(data, ensure_ascii=False)};\n")
+            f.write(f"window.{meta_var_name} = {json.dumps(meta, ensure_ascii=False)};\n")
     except Exception as e:
         print(f"Error guardando {filepath}: {e}")
 
@@ -256,9 +269,9 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
             pass
 
     # Guardar los 3 archivos
-    save_json(output_js, 'PRELOADED_DATA', garantia_data, "Garantias")
-    save_json(output_svc, 'PRELOADED_SERVICIO', servicio_data, "Servicios")
-    save_json(output_pts, 'partsData', parts_data, "Repuestos")
+    save_json(output_js, 'PRELOADED_DATA', garantia_data, "Garantias", "PRELOADED_META")
+    save_json(output_svc, 'PRELOADED_SERVICIO', servicio_data, "Servicios", "PRELOADED_META_SVC")
+    save_json(output_pts, 'partsData', parts_data, "Repuestos", "PARTS_META")
     
     print(f"Finalizado: {cnt_g} garantias, {cnt_s} servicios, {cnt_p} repuestos agregados.")
     return True
