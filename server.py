@@ -221,10 +221,13 @@ class DashboardServer(SimpleHTTPRequestHandler):
         anio_detectado = None
 
         # 1. Intentar deducir del nombre del archivo
-        filename_upper = filename.upper()
-        for mes in MESES_MAP.keys():
-            if mes in filename_upper:
-                mes_detectado = mes
+        filename_upper = str(filename).upper()
+        print(f"Detectando fecha para archivo: {filename_upper}")
+        
+        # Casting explícito a string para evitar CUALQUIER error de tipo
+        for mes in list(MESES_MAP.keys()):
+            if str(mes) in filename_upper:
+                mes_detectado = str(mes)
                 break
         
         # Buscar año en el nombre del archivo (ej. 2025, 2026)
