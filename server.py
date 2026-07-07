@@ -48,64 +48,45 @@ class DashboardServer(SimpleHTTPRequestHandler):
                 self.send_error(400, "Bad Request")
                 return
 
-            import re
-            content_length = int(self.headers.get('Content-Length', 0))
-            if content_length == 0:
-                self.send_error(400, "Empty request")
-                return
-                
-            body = self.rfile.read(content_length)
-            content_type = self.headers.get('Content-Type', '')
-            if 'boundary=' not in content_type:
-                self.send_error(400, "No boundary in Content-Type")
-                return
-                
-            boundary = content_type.split('boundary=')[1].encode()
-            parts = body.split(b'--' + boundary)
+            import cgi
+            import shutil
+            import gc
             
-            file_data = None
-            filename = None
-            overwrite = False
-            unidad = 'CS'
+            # Use FieldStorage to stream directly to disk, avoiding massive memory overhead
+            form = cgi.FieldStorage(
+                fp=self.rfile,
+                headers=self.headers,
+                environ={
+                    'REQUEST_METHOD': 'POST',
+                    'CONTENT_TYPE': self.headers['Content-Type'],
+                }
+            )
             
-            for part in parts:
-                if b'Content-Disposition: form-data;' in part:
-                    try:
-                        header, pbody = part.split(b'\r\n\r\n', 1)
-                    except ValueError:
-                        continue
-                        
-                    if pbody.endswith(b'\r\n'):
-                        pbody = pbody[:-2]
-                    name_match = re.search(br'name="([^"]+)"', header)
-                    if not name_match: 
-                        continue
-                    name = name_match.group(1).decode('utf-8', 'ignore')
-                    
-                    if name == 'file':
-                        filename_match = re.search(br'filename="([^"]+)"', header)
-                        if filename_match:
-                            filename = os.path.basename(filename_match.group(1).decode('utf-8', 'ignore'))
-                            file_data = pbody
-                    elif name == 'overwrite':
-                        overwrite = pbody.decode('utf-8', 'ignore').strip().lower() == 'true'
-                    elif name == 'unidad_negocio':
-                        unidad = pbody.decode('utf-8', 'ignore').strip().upper()
-                        
-            if not file_data or not filename:
+            if 'file' not in form or not form['file'].filename:
                 self.send_error(400, "No file provided")
                 return
+                
+            file_item = form['file']
+            filename = os.path.basename(file_item.filename)
+            
+            unidad = 'CS'
+            if 'unidad_negocio' in form and form['unidad_negocio'].value:
+                unidad = form['unidad_negocio'].value.strip().upper()
+            elif 'unidad' in form and form['unidad'].value:
+                unidad = form['unidad'].value.strip().upper()
+                
+            if unidad not in ['CS', 'MAESTROS']:
+                unidad = "CS"
 
-            # Detectar mes (temporalmente guardamos para leer)
             temp_path = os.path.join(BASE_DIR, "temp_upload.xlsx")
+            
+            # Stream directly to temp file
             with open(temp_path, "wb") as f:
-                f.write(file_data)
+                shutil.copyfileobj(file_item.file, f)
                 
             # LIBERAR MEMORIA MASIVA PARA EVITAR 502 OOM KILL EN RENDER
-            import gc
-            del file_data
-            del body
-            del parts
+            del form
+            del file_item
             gc.collect()
 
             anio_str, mes_nombre = self.detect_date_info(temp_path, filename, unidad)
