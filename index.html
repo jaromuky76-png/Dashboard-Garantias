@@ -318,8 +318,10 @@
     </div>
 
     <!-- Pre-loaded Data (dashboard_updater.py — 15 meses: 2025 completo + 2026 Ene-Mar) -->
-    <script src="data.js?v=6"></script>
-    <!-- Application Logic -->
-    <script src="app.js?v=6"></script>
+    <script>
+        const v = new URLSearchParams(window.location.search).get('v') || new Date().getTime();
+        document.write('<script src="data.js?v=' + v + '"><\\/script>');
+        document.write('<script src="app.js?v=' + v + '"><\\/script>');
+    </script>
 </body>
 </html>

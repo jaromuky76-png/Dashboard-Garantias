@@ -120,8 +120,10 @@ class DashboardServer(SimpleHTTPRequestHandler):
             os.makedirs(target_dir, exist_ok=True)
             target_path = os.path.join(target_dir, filename)
 
-            # Verificar si existe y no hay overwrite
-            if os.path.exists(target_path) and not overwrite:
+            # Verificar si existe algún archivo en la carpeta (ya que solo debe haber uno por mes/unidad)
+            existing_files = [f for f in os.listdir(target_dir) if f.endswith('.xlsx') or f.endswith('.xls')] if os.path.exists(target_dir) else []
+            
+            if existing_files and not overwrite:
                 if os.path.exists(temp_path):
                     os.remove(temp_path)
                 self.send_response(409) # Conflict
@@ -130,9 +132,13 @@ class DashboardServer(SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({'error': 'El archivo ya existe.', 'mes': mes_nombre}).encode())
                 return
 
+            # Si es overwrite, vaciamos la carpeta para no tener duplicados como archivo(1).xlsx
+            if existing_files and overwrite:
+                for old_f in existing_files:
+                    try: os.remove(os.path.join(target_dir, old_f))
+                    except: pass
+                    
             # Mover temporal a destino
-            if os.path.exists(target_path):
-                os.remove(target_path)
             os.rename(temp_path, target_path)
 
             print(f"Archivo guardado: {target_path}")

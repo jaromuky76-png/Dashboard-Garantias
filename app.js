@@ -131,7 +131,7 @@ async function processFiles(excelFiles, unidad) {
                 const data = await res.json();
                 if (!data.processing) {
                     clearInterval(pollStatus);
-                    window.location.reload();
+                    window.location.href = window.location.pathname + '?v=' + new Date().getTime();
                 }
             } catch(e) {
                 console.error("Error polling status:", e);
