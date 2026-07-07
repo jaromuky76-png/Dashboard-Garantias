@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seguimiento de Trámites - OT</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: '#0f172a',
+                        card: '#1e293b',
+                        primary: '#3b82f6',
+                        secondary: '#8b5cf6',
+                        success: '#10b981',
+                        danger: '#ef4444',
+                        warning: '#f59e0b'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Custom CSS -->
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        table {
+            border-collapse: separate;
+            border-spacing: 0;
+            width: 100%;
+        }
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        th {
+            background-color: rgba(0, 0, 0, 0.2);
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+        tr:last-child td { border-bottom: none; }
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .badge-Pendiente { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+        .badge-Proceso { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+        .badge-Finalizado { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+        
+        /* Modal */
+        .modal {
+            display: none; 
+            position: fixed; z-index: 1000; left: 0; top: 0;
+            width: 100%; height: 100%; overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+        }
+        .modal-content {
+            background-color: #1e293b;
+            margin: 5% auto;
+            padding: 2rem;
+            border: 1px solid rgba(255,255,255,0.1);
+            width: 90%; max-width: 500px;
+            border-radius: 1rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+    </style>
+</head>
+<body class="min-h-screen p-6">
+    <div class="max-w-7xl mx-auto space-y-6">
+        
+        <!-- Header -->
+        <header class="flex justify-between items-center glass-card p-6">
+            <div>
+                <h1 class="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                    Dashboard Estado de OT
+                </h1>
+                <p class="text-slate-400 mt-1">Seguimiento de Trámites de Garantía</p>
+                <nav class="mt-4 flex gap-4">
+                    <a href="index.html" class="text-slate-400 hover:text-white transition-colors pb-2">Garantías</a>
+                    <a href="servicio.html" class="text-slate-400 hover:text-white transition-colors pb-2">Servicios</a>
+                    <a href="repuestos.html" class="text-slate-400 hover:text-white transition-colors pb-2">Sugerido de Compras</a>
+                    <a href="seguimiento.html" class="text-primary font-semibold border-b-2 border-primary pb-2">Seguimiento Trámites</a>
+                </nav>
+            </div>
+            <div class="text-right">
+                <p class="text-sm text-slate-400">Total Trámites Activos</p>
+                <p class="text-2xl font-bold" id="kpi-activos">0</p>
+            </div>
+        </header>
+
+        <!-- Filtros -->
+        <div class="glass-card p-6 flex flex-wrap gap-4 items-end">
+            <div class="flex-1 min-w-[200px]">
+                <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Unidad de Negocio</label>
+                <select id="filtro-unidad" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-primary transition-colors text-white">
+                    <option value="ALL">Todas las Unidades</option>
+                    <option value="CS">Centro de Servicios (CS)</option>
+                    <option value="MAESTROS">Maestros</option>
+                </select>
+            </div>
+            <div class="flex-1 min-w-[200px]">
+                <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Estado</label>
+                <select id="filtro-estado" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-primary transition-colors text-white">
+                    <option value="ALL">Todos los Estados</option>
+                    <option value="Pendiente">Pendiente</option>
+                    <option value="Proceso">En Proceso</option>
+                    <option value="Finalizado">Finalizado</option>
+                </select>
+            </div>
+            <div class="flex-1 min-w-[200px]">
+                <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Buscador OT</label>
+                <input type="text" id="buscador-ot" placeholder="Buscar por número de OT..." class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-primary transition-colors text-white">
+            </div>
+        </div>
+
+        <!-- Tabla de Trámites -->
+        <div class="glass-card overflow-hidden">
+            <div class="overflow-x-auto">
+                <table id="tabla-tramites">
+                    <thead>
+                        <tr>
+                            <th>Unidad</th>
+                            <th>No. OT</th>
+                            <th>Marca</th>
+                            <th>Descripción</th>
+                            <th>Ingreso</th>
+                            <th>Estado</th>
+                            <th>Resolución Est.</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-body" class="text-sm">
+                        <!-- Llenado con JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content relative">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">&times;</button>
+            <h2 class="text-xl font-bold mb-4" id="modal-title">Actualizar Trámite</h2>
+            <form id="editForm" class="space-y-4">
+                <input type="hidden" id="edit-unidad">
+                <input type="hidden" id="edit-ot">
+                
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-1">Estado del Trámite</label>
+                    <select id="edit-estado" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white">
+                        <option value="Pendiente">Pendiente</option>
+                        <option value="Proceso">En Proceso</option>
+                        <option value="Finalizado">Finalizado</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-1">Fecha Estimada de Resolución</label>
+                    <input type="date" id="edit-fecha" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-1">Notas / Comentarios</label>
+                    <textarea id="edit-notas" rows="4" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white" placeholder="Ej. Esperando repuesto..."></textarea>
+                </div>
+                <div class="pt-4 flex justify-end gap-3">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 transition-colors">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-primary hover:bg-blue-600 transition-colors font-medium" id="btn-guardar">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Data Sources -->
+    <script src="seguimiento_data.js"></script>
+    <script src="seguimiento_app.js"></script>
+</body>
+</html>

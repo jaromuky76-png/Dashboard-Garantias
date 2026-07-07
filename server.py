@@ -37,6 +37,8 @@ class DashboardServer(SimpleHTTPRequestHandler):
     def do_POST(self):
         if self.path == '/upload':
             self.handle_upload()
+        elif self.path == '/api/actualizar_tramite':
+            self.handle_actualizar_tramite()
         else:
             self.send_error(404, "Not Found")
 
@@ -150,7 +152,7 @@ class DashboardServer(SimpleHTTPRequestHandler):
                     # Sincronización con GitHub
                     print("Sincronizando con GitHub...")
                     # Solo commiteamos los .js
-                    subprocess.run(["git", "add", "data.js", "servicio_data.js", "parts_data.js", "api_cache.json"], cwd=BASE_DIR, check=False)
+                    subprocess.run(["git", "add", "data.js", "servicio_data.js", "parts_data.js", "seguimiento_data.js", "api_cache.json"], cwd=BASE_DIR, check=False)
                     
                     # Verificamos si hay cambios
                     status = subprocess.run(["git", "status", "--porcelain"], cwd=BASE_DIR, capture_output=True, text=True)
@@ -246,6 +248,58 @@ class DashboardServer(SimpleHTTPRequestHandler):
             anio_detectado = "2026"
             
         return anio_detectado, mes_detectado
+
+    def handle_actualizar_tramite(self):
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            if content_length == 0:
+                self.send_error(400, "Empty request")
+                return
+            
+            body = self.rfile.read(content_length)
+            data = json.loads(body.decode('utf-8'))
+            
+            unidad = data.get('unidad_negocio')
+            ot = data.get('ot')
+            
+            if not unidad or not ot:
+                self.send_error(400, "Missing required fields")
+                return
+                
+            import dashboard_updater
+            output_seg = os.path.join(BASE_DIR, "seguimiento_data.js")
+            seg_data = dashboard_updater.load_existing_json(output_seg, 'PRELOADED_SEGUIMIENTO')
+            
+            updated = False
+            for t in seg_data:
+                if t.get('unidad_negocio') == unidad and t.get('ot') == ot:
+                    if 'estado' in data: t['estado'] = data['estado']
+                    if 'fecha_estimada' in data: t['fecha_estimada'] = data['fecha_estimada']
+                    if 'notas' in data: t['notas'] = data['notas']
+                    updated = True
+                    break
+                    
+            if updated:
+                dashboard_updater.save_json(output_seg, 'PRELOADED_SEGUIMIENTO', seg_data, "Seguimiento", "SEGUIMIENTO_META")
+                # Push a GitHub
+                print(f"Sincronizando actualizacion de OT {ot} con GitHub...")
+                subprocess.run(["git", "add", "seguimiento_data.js"], cwd=BASE_DIR, check=False)
+                status = subprocess.run(["git", "status", "--porcelain"], cwd=BASE_DIR, capture_output=True, text=True)
+                if status.stdout.strip():
+                    commit_msg = f"Update tracking OT {ot}"
+                    subprocess.run(["git", "commit", "-m", commit_msg], cwd=BASE_DIR, check=False)
+                    subprocess.run(["git", "push", "origin", "HEAD:master"], cwd=BASE_DIR, check=False)
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': True}).encode())
+            else:
+                self.send_error(404, "OT Not Found")
+                
+        except Exception as ex:
+            print(f"Error en actualizar_tramite: {ex}")
+            self.send_error(500, str(ex))
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8001))

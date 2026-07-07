@@ -31,6 +31,7 @@ MESES_MAP = {
 output_js  = os.path.join(BASE_DIR, "data.js")
 output_svc = os.path.join(BASE_DIR, "servicio_data.js")
 output_pts = os.path.join(BASE_DIR, "parts_data.js")
+output_seg = os.path.join(BASE_DIR, "seguimiento_data.js")
 
 def load_cache():
     if os.path.exists(CACHE_PATH):
@@ -164,13 +165,15 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
     garantia_data = load_existing_json(output_js, 'PRELOADED_DATA')
     servicio_data = load_existing_json(output_svc, 'PRELOADED_SERVICIO')
     parts_data = load_existing_json(output_pts, 'partsData')
+    seguimiento_data = load_existing_json(output_seg, 'PRELOADED_SEGUIMIENTO')
     
-    # Remover registros viejos
+    # Remover registros viejos (excepto para seguimiento, que mantiene el historial)
     garantia_data = remove_existing_period(garantia_data, unidad, anio, mes)
     servicio_data = remove_existing_period(servicio_data, unidad, anio, mes)
     parts_data = remove_existing_period(parts_data, unidad, anio, mes)
     
-    cnt_g, cnt_s, cnt_p = 0, 0, 0
+    cnt_g, cnt_s, cnt_p, cnt_seg = 0, 0, 0, 0
+    existing_seg = {f"{x.get('unidad_negocio', '')}-{x.get('ot', '')}" for x in seguimiento_data}
     
     try:
         wb = openpyxl.load_workbook(filepath, data_only=True, read_only=True)
@@ -231,6 +234,17 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
                     norm = "GARANTIA TOTAL" if "TOTAL" in tipo else "GARANTIA PARCIAL"
                     garantia_data.append({**base, "tipoGarantia": norm})
                     cnt_g += 1
+                    
+                    # Agregar al seguimiento si no existe
+                    if f"{unidad.upper()}-{ot_n}" not in existing_seg and ot_n:
+                        seguimiento_data.append({
+                            "ot": ot_n, "marca": marca, "descripcion": desc,
+                            "fecha_ingreso": fecha, "unidad_negocio": unidad.upper(),
+                            "anio": int(anio), "mes": mes, "mesNum": int(mes_num),
+                            "estado": "Pendiente", "notas": "", "fecha_estimada": ""
+                        })
+                        existing_seg.add(f"{unidad.upper()}-{ot_n}")
+                        cnt_seg += 1
                 elif "SERVICIO" in tipo:
                     servicio_data.append(base)
                     cnt_s += 1
@@ -266,10 +280,11 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
         except:
             pass
 
-    # Guardar los 3 archivos
+    # Guardar los 4 archivos
     save_json(output_js, 'PRELOADED_DATA', garantia_data, "Garantias", "PRELOADED_META")
     save_json(output_svc, 'PRELOADED_SERVICIO', servicio_data, "Servicios", "PRELOADED_META_SVC")
     save_json(output_pts, 'partsData', parts_data, "Repuestos", "PARTS_META")
+    save_json(output_seg, 'PRELOADED_SEGUIMIENTO', seguimiento_data, "Seguimiento", "SEGUIMIENTO_META")
     
-    print(f"Finalizado: {cnt_g} garantias, {cnt_s} servicios, {cnt_p} repuestos agregados.")
+    print(f"Finalizado: {cnt_g} garantias, {cnt_s} servicios, {cnt_p} repuestos, {cnt_seg} nuevos seguimientos agregados.")
     return True
