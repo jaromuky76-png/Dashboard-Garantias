@@ -223,7 +223,7 @@ class DashboardServer(SimpleHTTPRequestHandler):
 
         # 1. Intentar deducir del nombre del archivo
         filename_upper = filename.upper()
-        for mes in MESES_MAP.values():
+        for mes in MESES_MAP.keys():
             if mes in filename_upper:
                 mes_detectado = mes
                 break
@@ -236,33 +236,47 @@ class DashboardServer(SimpleHTTPRequestHandler):
         # 2. Si falta algo, leer el Excel usando la columna específica de fecha (D para CS, E para MAESTROS)
         if not mes_detectado or not anio_detectado:
             try:
-                df = pd.read_excel(filepath, sheet_name='OT', header=2)
+                import openpyxl
+                wb = openpyxl.load_workbook(filepath, data_only=True, read_only=True)
+                ot_sheet_name = None
+                for name in wb.sheetnames:
+                    if name.strip().upper() == 'OT' or name.strip().upper() == 'ESTADO DE OT':
+                        ot_sheet_name = name
+                        break
+                if not ot_sheet_name:
+                    ot_sheet_name = wb.sheetnames[0]
+                    
+                ws = wb[ot_sheet_name]
                 
-                # Para CS, la fecha está en la columna D (índice 3). Para MAESTROS, en la E (índice 4).
-                col_idx = 4 if unidad.upper() == 'MAESTROS' else 3
+                # Para CS, la fecha está en la columna D (índice 3, 4 en openpyxl). Para MAESTROS, en la E (índice 5).
+                col_idx = 5 if unidad.upper() == 'MAESTROS' else 4
                 
-                if df.shape[1] > col_idx:
-                    fechas = pd.to_datetime(df.iloc[:, col_idx], errors='coerce').dropna()
-                    if not fechas.empty:
-                        if not mes_detectado:
-                            most_frequent_month = fechas.dt.month.mode()[0]
-                            mes_detectado = MESES_MAP.get(most_frequent_month)
-                        if not anio_detectado:
-                            most_frequent_year = fechas.dt.year.mode()[0]
-                            anio_detectado = str(int(most_frequent_year))
+                # Buscar filas y contar frecuencias
+                from collections import Counter
+                meses_counter = Counter()
+                anios_counter = Counter()
                 
-                # Fallback por nombre de columna si los índices fallaron por alguna razón
-                if (not mes_detectado or not anio_detectado) and 'FECHA Y HR DE INGRESO' in df.columns:
-                    fechas = pd.to_datetime(df['FECHA Y HR DE INGRESO'], errors='coerce').dropna()
-                    if not fechas.empty:
-                        if not mes_detectado:
-                            most_frequent_month = fechas.dt.month.mode()[0]
-                            mes_detectado = MESES_MAP.get(most_frequent_month)
-                        if not anio_detectado:
-                            most_frequent_year = fechas.dt.year.mode()[0]
-                            anio_detectado = str(int(most_frequent_year))
+                for row in ws.iter_rows(min_row=3, values_only=True):
+                    if len(row) >= col_idx:
+                        val = row[col_idx - 1]
+                        if val and hasattr(val, 'month') and hasattr(val, 'year'):
+                            meses_counter[val.month] += 1
+                            anios_counter[val.year] += 1
+                            
+                if meses_counter and not mes_detectado:
+                    most_freq_month = meses_counter.most_common(1)[0][0]
+                    for k, v in MESES_MAP.items():
+                        if v == most_freq_month:
+                            mes_detectado = k
+                            break
+                            
+                if anios_counter and not anio_detectado:
+                    most_freq_year = anios_counter.most_common(1)[0][0]
+                    anio_detectado = str(int(most_freq_year))
+                
+                wb.close()
             except Exception as e:
-                print(f"Error detectando fechas: {e}")
+                print(f"Error detectando fechas con openpyxl: {e}")
         
         # Fallback a 2026 si no pudo detectar el año
         if not anio_detectado:
