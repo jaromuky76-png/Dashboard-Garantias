@@ -317,11 +317,18 @@
         </div>
     </div>
 
-    <!-- Pre-loaded Data (dashboard_updater.py — 15 meses: 2025 completo + 2026 Ene-Mar) -->
+    <!-- Pre-loaded Data (dashboard_updater.py) -->
     <script>
-        const v = new URLSearchParams(window.location.search).get('v') || new Date().getTime();
-        document.write('<script src="data.js?v=' + v + '"><\\/script>');
-        document.write('<script src="app.js?v=' + v + '"><\\/script>');
+        (function() {
+            var v = new URLSearchParams(window.location.search).get('v') || new Date().getTime();
+            var scripts = ['data.js', 'app.js'];
+            scripts.forEach(function(src) {
+                var s = document.createElement('script');
+                s.src = src + '?v=' + v;
+                s.async = false; // Maintain execution order
+                document.body.appendChild(s);
+            });
+        })();
     </script>
 </body>
 </html>
