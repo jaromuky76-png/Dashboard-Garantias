@@ -241,7 +241,8 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
                             "ot": ot_n, "marca": marca, "descripcion": desc,
                             "fecha_ingreso": fecha, "unidad_negocio": unidad.upper(),
                             "anio": int(anio), "mes": mes, "mesNum": int(mes_num),
-                            "estado": "Pendiente", "notas": "", "fecha_estimada": ""
+                            "estado": "Pendiente de Subir", "notas": "", "fecha_estimada": "",
+                            "no_caso_portal": "", "fecha_cierre_portal": "", "monto_mano_obra": 0
                         })
                         existing_seg.add(f"{unidad.upper()}-{ot_n}")
                         cnt_seg += 1

@@ -276,6 +276,11 @@ class DashboardServer(SimpleHTTPRequestHandler):
                     if 'estado' in data: t['estado'] = data['estado']
                     if 'fecha_estimada' in data: t['fecha_estimada'] = data['fecha_estimada']
                     if 'notas' in data: t['notas'] = data['notas']
+                    if 'no_caso_portal' in data: t['no_caso_portal'] = data['no_caso_portal']
+                    if 'fecha_cierre_portal' in data: t['fecha_cierre_portal'] = data['fecha_cierre_portal']
+                    if 'monto_mano_obra' in data: 
+                        try: t['monto_mano_obra'] = float(data['monto_mano_obra'])
+                        except: t['monto_mano_obra'] = 0
                     updated = True
                     break
                     

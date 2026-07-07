@@ -2,14 +2,19 @@
 
 let tramites = window.PRELOADED_SEGUIMIENTO || [];
 
+const AUTHORIZED_BRANDS = ['LG', 'HISENSE', 'MILWAUKEE', 'STANLEY', 'DEWALT', 'BLACK&DECKER', 'FORZA'];
+
 // DOM Elements
 const tablaBody = document.getElementById('tabla-body');
 const buscadorOT = document.getElementById('buscador-ot');
 const filtroEstado = document.getElementById('filtro-estado');
 const filtroUnidad = document.getElementById('filtro-unidad');
+const filtroMarca = document.getElementById('filtro-marca');
 const kpiActivos = document.getElementById('kpi-activos');
 const modal = document.getElementById('editModal');
 const editForm = document.getElementById('editForm');
+
+let filteredData = [];
 
 // Initialization
 function init() {
@@ -20,6 +25,7 @@ function init() {
     buscadorOT.addEventListener('input', renderTable);
     filtroEstado.addEventListener('change', renderTable);
     filtroUnidad.addEventListener('change', renderTable);
+    filtroMarca.addEventListener('change', renderTable);
     
     editForm.addEventListener('submit', handleSave);
 }
@@ -29,38 +35,55 @@ function renderTable() {
     const term = buscadorOT.value.toLowerCase().trim();
     const estadoFil = filtroEstado.value;
     const uniFil = filtroUnidad.value;
+    const marcaFil = filtroMarca.value;
     
     // Filter
-    let filtered = tramites.filter(t => {
+    filteredData = tramites.filter(t => {
         if (uniFil !== 'ALL' && t.unidad_negocio !== uniFil) return false;
         if (estadoFil !== 'ALL' && t.estado !== estadoFil) return false;
-        if (term && !t.ot.toLowerCase().includes(term)) return false;
+        
+        if (marcaFil === 'AUTHORIZED') {
+            const marca = (t.marca || '').toUpperCase();
+            const isAuthorized = AUTHORIZED_BRANDS.some(b => marca.includes(b));
+            if (!isAuthorized) return false;
+        }
+        
+        if (term) {
+            const matchesOT = (t.ot || '').toLowerCase().includes(term);
+            const matchesCaso = (t.no_caso_portal || '').toLowerCase().includes(term);
+            if (!matchesOT && !matchesCaso) return false;
+        }
+        
         return true;
     });
     
     // Sort by Date DESC
-    filtered.sort((a, b) => new Date(b.fecha_ingreso || 0) - new Date(a.fecha_ingreso || 0));
+    filteredData.sort((a, b) => new Date(b.fecha_ingreso || 0) - new Date(a.fecha_ingreso || 0));
     
-    // Render limit 50 to avoid lag
-    const maxRender = 50;
+    // Render limit 100 to avoid lag
+    const maxRender = 100;
     
     let html = '';
-    for(let i=0; i<Math.min(filtered.length, maxRender); i++) {
-        const t = filtered[i];
+    for(let i=0; i<Math.min(filteredData.length, maxRender); i++) {
+        const t = filteredData[i];
         
         let badgeClass = 'badge-Pendiente';
-        if(t.estado === 'Proceso') badgeClass = 'badge-Proceso';
-        if(t.estado === 'Finalizado') badgeClass = 'badge-Finalizado';
+        if(t.estado === 'Subido a Portal (Abierto)') badgeClass = 'badge-Abierto';
+        if(t.estado === 'Reclamado/Cerrado') badgeClass = 'badge-Cerrado';
+        
+        const marca = (t.marca || '').toUpperCase();
+        const isAuthorized = AUTHORIZED_BRANDS.some(b => marca.includes(b));
+        const marcaHtml = isAuthorized ? `<span class="text-white font-semibold">${marca}</span>` : marca;
         
         html += `
             <tr class="hover:bg-slate-800/50 transition-colors">
                 <td class="font-medium text-slate-300">${t.unidad_negocio || ''}</td>
                 <td class="font-bold text-primary">${t.ot || ''}</td>
-                <td>${t.marca || ''}</td>
+                <td>${marcaHtml}</td>
+                <td class="text-slate-300 font-medium">${t.no_caso_portal || '-'}</td>
                 <td class="max-w-[200px] truncate" title="${t.descripcion}">${t.descripcion || ''}</td>
                 <td>${t.fecha_ingreso || ''}</td>
                 <td><span class="badge ${badgeClass}">${t.estado}</span></td>
-                <td>${t.fecha_estimada || '-'}</td>
                 <td>
                     <button onclick="openModal('${t.unidad_negocio}', '${t.ot}')" 
                             class="text-xs bg-slate-700 hover:bg-primary text-white px-3 py-1.5 rounded transition-colors">
@@ -71,9 +94,9 @@ function renderTable() {
         `;
     }
     
-    if (filtered.length > maxRender) {
-        html += `<tr><td colspan="8" class="text-center text-slate-400 italic py-4">Mostrando ${maxRender} de ${filtered.length} resultados. Usa el buscador para refinar.</td></tr>`;
-    } else if (filtered.length === 0) {
+    if (filteredData.length > maxRender) {
+        html += `<tr><td colspan="8" class="text-center text-slate-400 italic py-4">Mostrando ${maxRender} de ${filteredData.length} resultados. Usa el buscador para refinar.</td></tr>`;
+    } else if (filteredData.length === 0) {
         html += `<tr><td colspan="8" class="text-center text-slate-400 italic py-4">No se encontraron trámites con los filtros actuales.</td></tr>`;
     }
     
@@ -81,7 +104,7 @@ function renderTable() {
 }
 
 function updateKPIs() {
-    const activos = tramites.filter(t => t.estado !== 'Finalizado').length;
+    const activos = tramites.filter(t => t.estado !== 'Reclamado/Cerrado').length;
     kpiActivos.textContent = activos;
 }
 
@@ -92,8 +115,10 @@ function openModal(unidad, ot) {
     
     document.getElementById('edit-unidad').value = unidad;
     document.getElementById('edit-ot').value = ot;
-    document.getElementById('edit-estado').value = t.estado || 'Pendiente';
-    document.getElementById('edit-fecha').value = t.fecha_estimada || '';
+    document.getElementById('edit-estado').value = t.estado || 'Pendiente de Subir';
+    document.getElementById('edit-caso').value = t.no_caso_portal || '';
+    document.getElementById('edit-cierre').value = t.fecha_cierre_portal || '';
+    document.getElementById('edit-monto').value = t.monto_mano_obra || '';
     document.getElementById('edit-notas').value = t.notas || '';
     
     document.getElementById('modal-title').textContent = `Actualizar OT: ${ot}`;
@@ -115,7 +140,9 @@ async function handleSave(e) {
         unidad_negocio: unidad,
         ot: ot,
         estado: document.getElementById('edit-estado').value,
-        fecha_estimada: document.getElementById('edit-fecha').value,
+        no_caso_portal: document.getElementById('edit-caso').value,
+        fecha_cierre_portal: document.getElementById('edit-cierre').value,
+        monto_mano_obra: document.getElementById('edit-monto').value,
         notas: document.getElementById('edit-notas').value
     };
     
@@ -151,6 +178,44 @@ async function handleSave(e) {
         btn.textContent = 'Guardar Cambios';
         btn.disabled = false;
     }
+}
+
+// CSV Export
+function exportToCSV() {
+    if (filteredData.length === 0) {
+        alert("No hay datos para exportar con los filtros actuales.");
+        return;
+    }
+    
+    const headers = [
+        "UNIDAD DE NEGOCIO", "NO. OT", "MARCA", "ESTADO", 
+        "NO. CASO PORTAL", "FECHA INGRESO", "FECHA CIERRE", "MONTO ($)", "NOTAS"
+    ];
+    
+    const rows = filteredData.map(t => [
+        t.unidad_negocio || '',
+        t.ot || '',
+        t.marca || '',
+        t.estado || '',
+        t.no_caso_portal || '',
+        t.fecha_ingreso || '',
+        t.fecha_cierre_portal || '',
+        t.monto_mano_obra || '0',
+        (t.notas || '').replace(/"/g, '""').replace(/\n/g, ' ')
+    ]);
+    
+    let csvContent = headers.join(",") + "\n" + 
+                     rows.map(e => e.map(cell => `"${cell}"`).join(",")).join("\n");
+                     
+    // BOM for UTF-8 Excel support
+    const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Reporte_Garantias_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 // Boot
