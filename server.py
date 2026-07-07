@@ -102,7 +102,7 @@ class DashboardServer(SimpleHTTPRequestHandler):
             with open(temp_path, "wb") as f:
                 f.write(file_data)
 
-            anio_str, mes_nombre = self.detect_date_info(temp_path, filename)
+            anio_str, mes_nombre = self.detect_date_info(temp_path, filename, unidad)
             
             if not mes_nombre:
                 if os.path.exists(temp_path):
@@ -216,7 +216,7 @@ class DashboardServer(SimpleHTTPRequestHandler):
             except:
                 pass
 
-    def detect_date_info(self, filepath, filename):
+    def detect_date_info(self, filepath, filename, unidad="CS"):
         import re
         mes_detectado = None
         anio_detectado = None
@@ -233,11 +233,26 @@ class DashboardServer(SimpleHTTPRequestHandler):
         if match_year:
             anio_detectado = match_year.group(1)
                 
-        # 2. Si falta algo, leer el Excel
+        # 2. Si falta algo, leer el Excel usando la columna específica de fecha (D para CS, E para MAESTROS)
         if not mes_detectado or not anio_detectado:
             try:
                 df = pd.read_excel(filepath, sheet_name='OT', header=2)
-                if 'FECHA Y HR DE INGRESO' in df.columns:
+                
+                # Para CS, la fecha está en la columna D (índice 3). Para MAESTROS, en la E (índice 4).
+                col_idx = 4 if unidad.upper() == 'MAESTROS' else 3
+                
+                if df.shape[1] > col_idx:
+                    fechas = pd.to_datetime(df.iloc[:, col_idx], errors='coerce').dropna()
+                    if not fechas.empty:
+                        if not mes_detectado:
+                            most_frequent_month = fechas.dt.month.mode()[0]
+                            mes_detectado = MESES_MAP.get(most_frequent_month)
+                        if not anio_detectado:
+                            most_frequent_year = fechas.dt.year.mode()[0]
+                            anio_detectado = str(int(most_frequent_year))
+                
+                # Fallback por nombre de columna si los índices fallaron por alguna razón
+                if (not mes_detectado or not anio_detectado) and 'FECHA Y HR DE INGRESO' in df.columns:
                     fechas = pd.to_datetime(df['FECHA Y HR DE INGRESO'], errors='coerce').dropna()
                     if not fechas.empty:
                         if not mes_detectado:
