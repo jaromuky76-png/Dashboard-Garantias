@@ -31,6 +31,8 @@ def parse_multipart_streaming(rfile, content_length, boundary_bytes, temp_xlsx_p
 
     filename = None
     unidad = 'CS'
+    anio = None
+    mes = None
 
     buf = b''
     state = 'FIND_BOUNDARY'   # states: FIND_BOUNDARY, READ_HEADERS, READ_BODY
@@ -115,9 +117,14 @@ def parse_multipart_streaming(rfile, content_length, boundary_bytes, temp_xlsx_p
                         file_out.write(body_data)
                         file_out.close()
                         file_out = None
-                    elif current_field_name in ('unidad', 'unidad_negocio'):
-                        unidad = body_data.decode('utf-8', 'ignore').strip().upper()
-
+                    elif b'name="unidad"' in header_bytes or b'name="unidad_negocio"' in header_bytes:
+                        val = body_data.decode('utf-8', 'ignore').strip().upper()
+                        if val: unidad = val
+                    elif b'name="anio"' in header_bytes:
+                        anio = body_data.decode('utf-8', 'ignore').strip()
+                    elif b'name="mes"' in header_bytes:
+                        mes = body_data.decode('utf-8', 'ignore').strip().upper()
+                    
                     buf = buf[pos + len(boundary):]
                     # Check for end boundary (--)
                     if buf.startswith(b'--'):
@@ -150,7 +157,7 @@ def parse_multipart_streaming(rfile, content_length, boundary_bytes, temp_xlsx_p
     if unidad not in ('CS', 'MAESTROS'):
         unidad = 'CS'
 
-    return filename, unidad
+    return filename, unidad, anio, mes
 
 
 class DashboardServer(SimpleHTTPRequestHandler):
@@ -198,7 +205,7 @@ class DashboardServer(SimpleHTTPRequestHandler):
             temp_path = os.path.join(BASE_DIR, "temp_upload.xlsx")
 
             # TRUE STREAMING: file goes from socket to disk, never into RAM
-            filename, unidad = parse_multipart_streaming(
+            filename, unidad, anio_from_form, mes_from_form = parse_multipart_streaming(
                 self.rfile, content_length, boundary_bytes, temp_path
             )
             gc.collect()
@@ -207,7 +214,9 @@ class DashboardServer(SimpleHTTPRequestHandler):
                 self.send_error(400, "No file uploaded or file empty")
                 return
 
-            anio_str, mes_nombre = self.detect_date_info(temp_path, filename, unidad)
+            anio_str, mes_nombre = self.detect_date_info(
+                filename, unidad, anio_from_form, mes_from_form, filepath=temp_path
+            )
 
             if not mes_nombre:
                 if os.path.exists(temp_path):
@@ -297,21 +306,31 @@ class DashboardServer(SimpleHTTPRequestHandler):
             except Exception:
                 pass
 
-    def detect_date_info(self, filepath, filename, unidad="CS"):
-        mes_detectado = None
-        anio_detectado = None
+    def detect_date_info(self, filename, unidad, anio_form=None, mes_form=None, filepath=None):
+        """
+        Detecta mes/año en este orden de prioridad:
+        1. Valores enviados por el cliente (desde nombre del archivo detectado en JS)
+        2. Nombre del archivo
+        3. Columna D (CS) o E (MAESTROS) del Excel - solo 20 filas (acuerdo con usuario)
+        """
+        mes_detectado = mes_form if mes_form and mes_form in MESES_MAP else None
+        anio_detectado = anio_form if anio_form and re.match(r'20\d{2}', str(anio_form)) else None
 
-        filename_upper = str(filename).upper()
-        for mes_name in MESES_MAP.keys():
-            if mes_name in filename_upper:
-                mes_detectado = mes_name
-                break
-
-        match_year = re.search(r'(20\d{2})', filename_upper)
-        if match_year:
-            anio_detectado = match_year.group(1)
-
+        # 2. Intentar desde el nombre del archivo
         if not mes_detectado or not anio_detectado:
+            filename_upper = str(filename).upper()
+            if not mes_detectado:
+                for mes_name in MESES_MAP.keys():
+                    if mes_name in filename_upper:
+                        mes_detectado = mes_name
+                        break
+            if not anio_detectado:
+                match_year = re.search(r'(20\d{2})', filename_upper)
+                if match_year:
+                    anio_detectado = match_year.group(1)
+
+        # 3. Leer el Excel: col D para CS, col E para MAESTROS (max 20 filas)
+        if (not mes_detectado or not anio_detectado) and filepath and os.path.exists(filepath):
             try:
                 import openpyxl
                 from collections import Counter
@@ -324,26 +343,31 @@ class DashboardServer(SimpleHTTPRequestHandler):
                 if not ot_sheet_name:
                     ot_sheet_name = wb.sheetnames[0]
                 ws = wb[ot_sheet_name]
+                # CS -> columna D (idx 4), MAESTROS -> columna E (idx 5)
                 col_idx = 5 if unidad.upper() == 'MAESTROS' else 4
-                from collections import Counter
-                meses_counter = Counter()
-                anios_counter = Counter()
-                for row in ws.iter_rows(min_row=3, max_row=100, values_only=True):
+                meses_c = Counter()
+                anios_c = Counter()
+                # Solo 20 filas para minimizar uso de RAM
+                for row in ws.iter_rows(min_row=3, max_row=22, values_only=True):
                     if len(row) >= col_idx:
                         val = row[col_idx - 1]
                         if val and hasattr(val, 'month'):
-                            meses_counter[val.month] += 1
-                            anios_counter[val.year] += 1
-                if meses_counter and not mes_detectado:
-                    mes_detectado = MESES_INV.get(meses_counter.most_common(1)[0][0])
-                if anios_counter and not anio_detectado:
-                    anio_detectado = str(int(anios_counter.most_common(1)[0][0]))
+                            meses_c[val.month] += 1
+                            anios_c[val.year] += 1
+                if meses_c and not mes_detectado:
+                    mes_detectado = MESES_INV.get(meses_c.most_common(1)[0][0])
+                if anios_c and not anio_detectado:
+                    anio_detectado = str(int(anios_c.most_common(1)[0][0]))
                 wb.close()
             except Exception as e:
-                print(f"Error detectando fechas: {e}")
+                print(f"Error detectando fecha con openpyxl: {e}")
 
+        # Fallback: año actual
         if not anio_detectado:
-            anio_detectado = '2026'
+            import datetime
+            anio_detectado = str(datetime.datetime.now().year)
+
+        print(f"Fecha detectada: anio={anio_detectado} mes={mes_detectado} unidad={unidad} archivo={filename}")
         return anio_detectado, mes_detectado
 
     def handle_actualizar_tramite(self):

@@ -150,11 +150,32 @@ async function processFiles(excelFiles, unidad) {
     }
 }
 
-async function uploadFileWithRetry(file, overwrite = false, unidad = 'CS') {
+async function uploadFileWithRetry(file, overwrite = false, unidad = 'CS', anioOverride = null, mesOverride = null) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('overwrite', overwrite);
     formData.append('unidad_negocio', unidad);
+    
+    // Detectar mes del nombre del archivo en el cliente (evita carga pesada en servidor)
+    const MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO',
+                   'JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+    const nameUpper = file.name.toUpperCase();
+    
+    // Año: primero buscar en el nombre, luego usar el actual
+    let anio = anioOverride;
+    if (!anio) {
+        const yearMatch = nameUpper.match(/(20\d{2})/);
+        anio = yearMatch ? yearMatch[1] : String(new Date().getFullYear());
+    }
+    
+    // Mes: buscar en el nombre del archivo
+    let mes = mesOverride;
+    if (!mes) {
+        mes = MESES.find(m => nameUpper.includes(m)) || null;
+    }
+    
+    formData.append('anio', anio);
+    if (mes) formData.append('mes', mes);
 
     const response = await fetch('/upload', {
         method: 'POST',
@@ -165,7 +186,7 @@ async function uploadFileWithRetry(file, overwrite = false, unidad = 'CS') {
         const errorData = await response.json();
         const confirmOverwrite = confirm(`El archivo para el mes de ${errorData.mes} (Unidad: ${unidad}) ya existe.\n¿Desea reemplazarlo y re-procesar los datos?`);
         if (confirmOverwrite) {
-            return await uploadFileWithRetry(file, true, unidad);
+            return await uploadFileWithRetry(file, true, unidad, anio, mes);
         } else {
             throw new Error("El usuario canceló la subida (archivo ya existe).");
         }
