@@ -48,45 +48,65 @@ class DashboardServer(SimpleHTTPRequestHandler):
                 self.send_error(400, "Bad Request")
                 return
 
-            import cgi
-            import shutil
+            content_length = int(self.headers.get('Content-Length', 0))
+            if content_length == 0:
+                self.send_error(400, "Empty request")
+                return
+                
+            body = self.rfile.read(content_length)
+            
+            boundary_str = content_type.split('boundary=')[1]
+            boundary = (b'--' + boundary_str.encode())
+            
+            filename = None
+            unidad = 'CS'
+            temp_path = os.path.join(BASE_DIR, "temp_upload.xlsx")
+            
+            # Use memoryview to prevent copying the massive file in RAM (0-copy slicing)
             import gc
             
-            # Use FieldStorage to stream directly to disk, avoiding massive memory overhead
-            form = cgi.FieldStorage(
-                fp=self.rfile,
-                headers=self.headers,
-                environ={
-                    'REQUEST_METHOD': 'POST',
-                    'CONTENT_TYPE': self.headers['Content-Type'],
-                }
-            )
-            
-            if 'file' not in form or not form['file'].filename:
+            start = 0
+            while True:
+                idx = body.find(boundary, start)
+                if idx == -1: break
+                
+                next_idx = body.find(boundary, idx + len(boundary))
+                if next_idx == -1: break
+                
+                part_start = idx + len(boundary) + 2
+                part_end = next_idx - 2
+                if part_start >= part_end:
+                    start = next_idx
+                    continue
+                    
+                header_end = body.find(b'\r\n\r\n', part_start, part_end)
+                if header_end != -1:
+                    header = body[part_start:header_end]
+                    
+                    if b'name="unidad"' in header or b'name="unidad_negocio"' in header:
+                        val = body[header_end+4:part_end].decode('utf-8', 'ignore').strip().upper()
+                        if val: unidad = val
+                    elif b'filename=' in header:
+                        import re
+                        fn_match = re.search(br'filename="([^"]+)"', header)
+                        if fn_match:
+                            filename = os.path.basename(fn_match.group(1).decode('utf-8', 'ignore'))
+                        
+                        # 0-copy write to disk
+                        with open(temp_path, 'wb') as f:
+                            f.write(memoryview(body)[header_end+4:part_end])
+                            
+                start = next_idx
+                
+            if unidad not in ['CS', 'MAESTROS']:
+                unidad = 'CS'
+                
+            if not filename:
                 self.send_error(400, "No file provided")
                 return
                 
-            file_item = form['file']
-            filename = os.path.basename(file_item.filename)
-            
-            unidad = 'CS'
-            if 'unidad_negocio' in form and form['unidad_negocio'].value:
-                unidad = form['unidad_negocio'].value.strip().upper()
-            elif 'unidad' in form and form['unidad'].value:
-                unidad = form['unidad'].value.strip().upper()
-                
-            if unidad not in ['CS', 'MAESTROS']:
-                unidad = "CS"
-
-            temp_path = os.path.join(BASE_DIR, "temp_upload.xlsx")
-            
-            # Stream directly to temp file
-            with open(temp_path, "wb") as f:
-                shutil.copyfileobj(file_item.file, f)
-                
             # LIBERAR MEMORIA MASIVA PARA EVITAR 502 OOM KILL EN RENDER
-            del form
-            del file_item
+            del body
             gc.collect()
 
             anio_str, mes_nombre = self.detect_date_info(temp_path, filename, unidad)
