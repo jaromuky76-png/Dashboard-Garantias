@@ -10,6 +10,7 @@ const buscadorOT = document.getElementById('buscador-ot');
 const filtroEstado = document.getElementById('filtro-estado');
 const filtroUnidad = document.getElementById('filtro-unidad');
 const filtroMarca = document.getElementById('filtro-marca');
+const filtroMes = document.getElementById('filtro-mes');
 const kpiActivos = document.getElementById('kpi-activos');
 const modal = document.getElementById('editModal');
 const editForm = document.getElementById('editForm');
@@ -18,6 +19,7 @@ let filteredData = [];
 
 // Initialization
 function init() {
+    populateMeses();
     renderTable();
     updateKPIs();
     
@@ -26,8 +28,19 @@ function init() {
     filtroEstado.addEventListener('change', renderTable);
     filtroUnidad.addEventListener('change', renderTable);
     filtroMarca.addEventListener('change', renderTable);
+    filtroMes.addEventListener('change', renderTable);
     
     editForm.addEventListener('submit', handleSave);
+}
+
+function populateMeses() {
+    const meses = [...new Set(tramites.map(t => (t.mes || '').toUpperCase()).filter(Boolean))];
+    const mapOrder = { 'ENERO':1, 'FEBRERO':2, 'MARZO':3, 'ABRIL':4, 'MAYO':5, 'JUNIO':6, 'JULIO':7, 'AGOSTO':8, 'SEPTIEMBRE':9, 'OCTUBRE':10, 'NOVIEMBRE':11, 'DICIEMBRE':12 };
+    meses.sort((a, b) => (mapOrder[a] || 99) - (mapOrder[b] || 99));
+    
+    let html = '<option value="ALL">Todos los Meses</option>';
+    meses.forEach(m => html += `<option value="${m}">${m}</option>`);
+    filtroMes.innerHTML = html;
 }
 
 // Render Table
@@ -36,16 +49,20 @@ function renderTable() {
     const estadoFil = filtroEstado.value;
     const uniFil = filtroUnidad.value;
     const marcaFil = filtroMarca.value;
+    const mesFil = filtroMes.value;
     
     // Filter
     filteredData = tramites.filter(t => {
         if (uniFil !== 'ALL' && t.unidad_negocio !== uniFil) return false;
         if (estadoFil !== 'ALL' && t.estado !== estadoFil) return false;
+        if (mesFil !== 'ALL' && (t.mes || '').toUpperCase() !== mesFil) return false;
         
         if (marcaFil === 'AUTHORIZED') {
             const marca = (t.marca || '').toUpperCase();
             const isAuthorized = AUTHORIZED_BRANDS.some(b => marca.includes(b));
             if (!isAuthorized) return false;
+        } else if (marcaFil !== 'ALL') {
+            if (!(t.marca || '').toUpperCase().includes(marcaFil)) return false;
         }
         
         if (term) {
