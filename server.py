@@ -100,6 +100,13 @@ class DashboardServer(SimpleHTTPRequestHandler):
             temp_path = os.path.join(BASE_DIR, "temp_upload.xlsx")
             with open(temp_path, "wb") as f:
                 f.write(file_data)
+                
+            # LIBERAR MEMORIA MASIVA PARA EVITAR 502 OOM KILL EN RENDER
+            import gc
+            del file_data
+            del body
+            del parts
+            gc.collect()
 
             anio_str, mes_nombre = self.detect_date_info(temp_path, filename, unidad)
             
@@ -218,7 +225,74 @@ class DashboardServer(SimpleHTTPRequestHandler):
                 pass
 
     def detect_date_info(self, filepath, filename, unidad="CS"):
-        return "2026", "JULIO"
+        import re
+        mes_detectado = None
+        anio_detectado = None
+
+        # 1. Intentar deducir del nombre del archivo
+        filename_upper = str(filename).upper()
+        
+        # Casting explícito a string para evitar CUALQUIER error de tipo
+        for mes in list(MESES_MAP.keys()):
+            if str(mes) in filename_upper:
+                mes_detectado = str(mes)
+                break
+        
+        # Buscar año en el nombre del archivo (ej. 2025, 2026)
+        match_year = re.search(r'(20\d{2})', filename_upper)
+        if match_year:
+            anio_detectado = match_year.group(1)
+                
+        # 2. Si falta algo, leer el Excel usando la columna específica de fecha (D para CS, E para MAESTROS)
+        if not mes_detectado or not anio_detectado:
+            try:
+                import openpyxl
+                wb = openpyxl.load_workbook(filepath, data_only=True, read_only=True)
+                ot_sheet_name = None
+                for name in wb.sheetnames:
+                    if name.strip().upper() == 'OT' or name.strip().upper() == 'ESTADO DE OT':
+                        ot_sheet_name = name
+                        break
+                if not ot_sheet_name:
+                    ot_sheet_name = wb.sheetnames[0]
+                    
+                ws = wb[ot_sheet_name]
+                
+                # Para CS, la fecha está en la columna D (índice 3, 4 en openpyxl). Para MAESTROS, en la E (índice 5).
+                col_idx = 5 if unidad.upper() == 'MAESTROS' else 4
+                
+                # Buscar filas y contar frecuencias
+                from collections import Counter
+                meses_counter = Counter()
+                anios_counter = Counter()
+                
+                for row in ws.iter_rows(min_row=3, values_only=True):
+                    if len(row) >= col_idx:
+                        val = row[col_idx - 1]
+                        if val and hasattr(val, 'month') and hasattr(val, 'year'):
+                            meses_counter[val.month] += 1
+                            anios_counter[val.year] += 1
+                            
+                if meses_counter and not mes_detectado:
+                    most_freq_month = meses_counter.most_common(1)[0][0]
+                    for k, v in MESES_MAP.items():
+                        if v == most_freq_month:
+                            mes_detectado = k
+                            break
+                            
+                if anios_counter and not anio_detectado:
+                    most_freq_year = anios_counter.most_common(1)[0][0]
+                    anio_detectado = str(int(most_freq_year))
+                
+                wb.close()
+            except Exception as e:
+                print(f"Error detectando fechas con openpyxl: {e}")
+        
+        # Fallback a 2026 si no pudo detectar el año
+        if not anio_detectado:
+            anio_detectado = '2026'
+        
+        return anio_detectado, mes_detectado
 
     def handle_actualizar_tramite(self):
         try:
