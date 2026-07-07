@@ -2,7 +2,6 @@ import os
 import json
 import subprocess
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-import pandas as pd
 import datetime
 
 # Directorio base del proyecto (una carpeta arriba de Dashboard Garantias)
