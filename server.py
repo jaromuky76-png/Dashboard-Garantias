@@ -206,6 +206,8 @@ class DashboardServer(SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps({'success': True, 'mes': mes_nombre}).encode())
 
         except Exception as ex:
+            import traceback
+            traceback.print_exc()
             print(f"Server error during upload: {ex}")
             try:
                 self.send_response(500)
