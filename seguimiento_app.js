@@ -4,6 +4,24 @@ let tramites = window.PRELOADED_SEGUIMIENTO || [];
 
 const AUTHORIZED_BRANDS = ['LG', 'HISENSE', 'MILWAUKEE', 'STANLEY', 'DEWALT', 'BLACK&DECKER', 'FORZA'];
 
+// Pre-calcular el mes y año de creación real a partir de fecha_ingreso
+const MESES_NOMBRES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+tramites.forEach(t => {
+    t.creationAnio = t.anio;
+    t.creationMes = (t.mes || '').toUpperCase();
+    if (t.fecha_ingreso) {
+        const parts = t.fecha_ingreso.split(' ')[0].split('-');
+        if (parts.length === 3) {
+            const y = parseInt(parts[0]);
+            const m = parseInt(parts[1]);
+            if (!isNaN(y)) t.creationAnio = y;
+            if (!isNaN(m) && m >= 1 && m <= 12) {
+                t.creationMes = MESES_NOMBRES[m - 1];
+            }
+        }
+    }
+});
+
 // DOM Elements
 const tablaBody = document.getElementById('tabla-body');
 const buscadorOT = document.getElementById('buscador-ot');
@@ -37,7 +55,7 @@ function init() {
 }
 
 function populateAnios() {
-    const anios = [...new Set(tramites.map(t => t.anio).filter(Boolean))];
+    const anios = [...new Set(tramites.map(t => t.creationAnio).filter(Boolean))];
     anios.sort((a, b) => b - a);
     
     let html = '<option value="ALL">Todos los Años</option>';
@@ -46,7 +64,7 @@ function populateAnios() {
 }
 
 function populateMeses() {
-    const meses = [...new Set(tramites.map(t => (t.mes || '').toUpperCase()).filter(Boolean))];
+    const meses = [...new Set(tramites.map(t => t.creationMes).filter(Boolean))];
     const mapOrder = { 'ENERO':1, 'FEBRERO':2, 'MARZO':3, 'ABRIL':4, 'MAYO':5, 'JUNIO':6, 'JULIO':7, 'AGOSTO':8, 'SEPTIEMBRE':9, 'OCTUBRE':10, 'NOVIEMBRE':11, 'DICIEMBRE':12 };
     meses.sort((a, b) => (mapOrder[a] || 99) - (mapOrder[b] || 99));
     
@@ -68,8 +86,8 @@ function renderTable() {
     filteredData = tramites.filter(t => {
         if (uniFil !== 'ALL' && t.unidad_negocio !== uniFil) return false;
         if (estadoFil !== 'ALL' && t.estado !== estadoFil) return false;
-        if (anioFil !== 'ALL' && String(t.anio) !== anioFil) return false;
-        if (mesFil !== 'ALL' && (t.mes || '').toUpperCase() !== mesFil) return false;
+        if (anioFil !== 'ALL' && String(t.creationAnio) !== anioFil) return false;
+        if (mesFil !== 'ALL' && t.creationMes !== mesFil) return false;
         
         if (marcaFil === 'AUTHORIZED') {
             const marca = (t.marca || '').toUpperCase();
