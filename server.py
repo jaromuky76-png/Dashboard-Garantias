@@ -291,10 +291,16 @@ class DashboardServer(SimpleHTTPRequestHandler):
                         cwd=BASE_DIR, capture_output=True, text=True
                     )
                     if status.stdout.strip():
-                        subprocess.run(
+                        subprocess.run(["git", "config", "user.name", "Render Server"], cwd=BASE_DIR, check=False)
+                        subprocess.run(["git", "config", "user.email", "server@render.com"], cwd=BASE_DIR, check=False)
+                        
+                        commit_res = subprocess.run(
                             ["git", "commit", "-m", f"Update data: {u} {m} {a}"],
-                            cwd=BASE_DIR, check=False
+                            cwd=BASE_DIR, capture_output=True, text=True
                         )
+                        if commit_res.returncode != 0:
+                            print(f"Commit error: {commit_res.stderr}")
+                            
                         token = os.environ.get("GITHUB_TOKEN")
                         if token:
                             repo_url = f"https://jaromuky76-png:{token}@github.com/jaromuky76-png/Dashboard-Garantias.git"
