@@ -239,8 +239,18 @@
         </div>
     </div>
 
-    <!-- Data Sources -->
-    <script src="seguimiento_data.js"></script>
-    <script src="seguimiento_app.js"></script>
+    <!-- Data Sources with Cache Buster -->
+    <script>
+        (function() {
+            var v = new Date().getTime();
+            var scripts = ['seguimiento_data.js', 'seguimiento_app.js'];
+            scripts.forEach(function(src) {
+                var s = document.createElement('script');
+                s.src = src + '?v=' + v;
+                s.async = false; // Maintain execution order
+                document.body.appendChild(s);
+            });
+        })();
+    </script>
 </body>
 </html>

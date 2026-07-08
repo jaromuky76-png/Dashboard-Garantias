@@ -317,10 +317,9 @@
         </div>
     </div>
 
-    <!-- Pre-loaded Data (dashboard_updater.py) -->
     <script>
         (function() {
-            var v = new URLSearchParams(window.location.search).get('v') || new Date().getTime();
+            var v = new Date().getTime();
             var scripts = ['data.js', 'app.js'];
             scripts.forEach(function(src) {
                 var s = document.createElement('script');
