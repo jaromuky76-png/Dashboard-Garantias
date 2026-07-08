@@ -81,7 +81,7 @@ function preventDefaults(e) {
 let pendingUploadFiles = [];
 
 function promptUnitSelection(files) {
-    const excelFiles = files.filter(f => f.name.endsWith('.xlsx') || f.name.endsWith('.xls'));
+    const excelFiles = files.filter(f => f.name.toLowerCase().endsWith('.xlsx') || f.name.toLowerCase().endsWith('.xls'));
     if (excelFiles.length === 0) {
         alert('Por favor selecciona archivos Excel (.xlsx o .xls)');
         return;

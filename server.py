@@ -260,7 +260,7 @@ class DashboardServer(SimpleHTTPRequestHandler):
             os.makedirs(target_dir, exist_ok=True)
             target_path = os.path.join(target_dir, filename)
 
-            existing_files = [f for f in os.listdir(target_dir) if f.endswith(('.xlsx', '.xls'))]
+            existing_files = [f for f in os.listdir(target_dir) if f.lower().endswith(('.xlsx', '.xls'))]
             for old_f in existing_files:
                 try:
                     os.remove(os.path.join(target_dir, old_f))
