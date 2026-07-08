@@ -1,7 +1,7 @@
 import os
 import json
 import datetime
-import openpyxl
+import xlsx_parser
 import urllib.request
 import re
 import time
@@ -175,59 +175,52 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
     existing_seg = {f"{x.get('unidad_negocio', '')}-{x.get('ot', '')}" for x in seguimiento_data}
     
     try:
-        wb = openpyxl.load_workbook(filepath, data_only=True, read_only=True)
+        sheet_names = xlsx_parser.get_xlsx_sheet_names(filepath)
         ot_sheet_name = None
-        for name in wb.sheetnames:
-            if name.strip().upper() == 'OT' or name.strip().upper() == 'ESTADO DE OT':
+        for name in sheet_names:
+            if name.strip().upper() in ('OT', 'ESTADO DE OT'):
                 ot_sheet_name = name
                 break
         if not ot_sheet_name:
-            ot_sheet_name = wb.sheetnames[0]
+            ot_sheet_name = sheet_names[0] if sheet_names else 'OT'
             
-        ot_sheet = wb[ot_sheet_name]
-        ot_iterator = ot_sheet.iter_rows(values_only=True)
-        ot_headers = None
+        parser_generator = xlsx_parser.read_xlsx_rows_smart(filepath, ot_sheet_name)
+        h = None
         
-        for row in ot_iterator:
-            row_list = list(row)
-            if any(v and (str(v).strip().upper() == 'MARCA' or 'TIPO DE GARANTIA' in str(v).upper()) for v in row_list):
-                ot_headers = row_list
-                break
+        for row, header_map in parser_generator:
+            if header_map:
+                h = header_map
+                # Unificar indices
+                ot_i = h.get('NO. OT', h.get('NO. OT/MR', -1))
+                fecha_i = next((idx for k, idx in h.items() if "FECHA Y HR" in k or "FECHA DE CREACION" in k or "FECHA Y HORA" in k or "FECHA DE INGRESO" in k), -1)
+                marca_i = h.get('MARCA', -1)
+                rms_i = h.get('RMS', h.get('RMS EVAPORADOR', -1))
+                desc_i = h.get('DESCRIPCION DEL EQUIPO', h.get('DESCRIPCION DEL EVAPORADOR', -1))
+                cant_i = h.get('CANT2', h.get('CANT', -1))
+                tipo_i = h.get('TIPO DE GARANTIA', -1)
+                acep_i = h.get('ACEPTACION', -1)
+                link_i = h.get('LINK OT DIGITAL', -1)
                 
-        if ot_headers:
-            h = {str(v).strip().upper(): i for i, v in enumerate(ot_headers) if v}
-            # Unificar indices
-            ot_i = h.get('NO. OT', h.get('NO. OT/MR', -1))
-            fecha_i = next((idx for k, idx in h.items() if "FECHA Y HR" in k or "FECHA DE CREACION" in k or "FECHA Y HORA" in k or "FECHA DE INGRESO" in k), -1)
-            marca_i = h.get('MARCA', -1)
-            rms_i = h.get('RMS', h.get('RMS EVAPORADOR', -1))
-            desc_i = h.get('DESCRIPCION DEL EQUIPO', h.get('DESCRIPCION DEL EVAPORADOR', -1))
-            cant_i = h.get('CANT2', h.get('CANT', -1))
-            tipo_i = h.get('TIPO DE GARANTIA', -1)
-            acep_i = h.get('ACEPTACION', -1)
-            link_i = h.get('LINK OT DIGITAL', -1)
-            
-            # Indices específicos para seguimiento
-            validador_garantia_i = next((idx for k, idx in h.items() if "VALIDADOR DE GARANTI" in k or "VALIDACION DE GARANTIA" in k), 9)
-            boleta_rnn_i = next((idx for k, idx in h.items() if "BOLETA/RNN" in k or "BOLETA" in k or "RNN" in k), 26)
-            actividad_i = next((idx for k, idx in h.items() if "ACTIVIDAD" in k), 9)
-            externo_rnn_i = next((idx for k, idx in h.items() if "EXTERNO/RNN" in k or "EXTERNO" in k), 3)
+                # Indices específicos para seguimiento
+                validador_garantia_i = next((idx for k, idx in h.items() if "VALIDADOR DE GARANTI" in k or "VALIDACION DE GARANTIA" in k), 9)
+                boleta_rnn_i = next((idx for k, idx in h.items() if "BOLETA/RNN" in k or "BOLETA" in k or "RNN" in k), 26)
+                actividad_i = next((idx for k, idx in h.items() if "ACTIVIDAD" in k), 9)
+                externo_rnn_i = next((idx for k, idx in h.items() if "EXTERNO/RNN" in k or "EXTERNO" in k), 3)
 
-            seg_map = {f"{x.get('unidad_negocio', '')}-{x.get('ot', '')}": x for x in seguimiento_data}
-            
-            for row in ot_iterator:
-                row = list(row)
+                seg_map = {f"{x.get('unidad_negocio', '')}-{x.get('ot', '')}": x for x in seguimiento_data}
+                continue
                 
-                tipo = safe_str(row[tipo_i] if tipo_i >= 0 else None).upper()
+            if h:
+                tipo = safe_str(row[tipo_i] if tipo_i >= 0 and tipo_i < len(row) else None).upper()
                 
-                acep = safe_str(row[acep_i] if acep_i >= 0 else None).upper()
-                marca = safe_str(row[marca_i] if marca_i >= 0 else None, 'DESCONOCIDA').upper()
-                rms = safe_str(row[rms_i] if rms_i >= 0 else None, 'N/A')
-                desc = safe_str(row[desc_i] if desc_i >= 0 else None, '')
-                cant = safe_int(row[cant_i] if cant_i >= 0 else None, 1)
-                ot_n = safe_str(row[ot_i] if ot_i >= 0 else None, '')
-                link = safe_str(row[link_i] if link_i >= 0 else None, '')
-                fecha = fmt_datetime(row[fecha_i] if fecha_i >= 0 else None)
+                acep = safe_str(row[acep_i] if acep_i >= 0 and acep_i < len(row) else None).upper()
+                marca = safe_str(row[marca_i] if marca_i >= 0 and marca_i < len(row) else None, 'DESCONOCIDA').upper()
+                rms = safe_str(row[rms_i] if rms_i >= 0 and rms_i < len(row) else None, 'N/A')
+                desc = safe_str(row[desc_i] if desc_i >= 0 and desc_i < len(row) else None, '')
+                cant = safe_int(row[cant_i] if cant_i >= 0 and cant_i < len(row) else None, 1)
+                ot_n = safe_str(row[ot_i] if ot_i >= 0 and ot_i < len(row) else None, '')
+                link = safe_str(row[link_i] if link_i >= 0 and link_i < len(row) else None, '')
+                fecha = row[fecha_i] if fecha_i >= 0 and fecha_i < len(row) else ""
                 
                 base = {
                     "marca": marca, "rms": rms, "descripcion": desc,
@@ -367,11 +360,7 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
         print(f"Error procesando {filepath}: {e}")
         import traceback; traceback.print_exc()
     finally:
-        try:
-            if 'wb' in locals() and wb:
-                wb.close()
-        except:
-            pass
+        pass
 
     # Guardar cache y archivos
     save_cache(api_cache)

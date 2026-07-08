@@ -361,35 +361,43 @@ class DashboardServer(SimpleHTTPRequestHandler):
         # 3. Leer el Excel: col D para CS, col E para MAESTROS (max 20 filas)
         if (not mes_detectado or not anio_detectado) and filepath and os.path.exists(filepath):
             try:
-                import openpyxl
+                import xlsx_parser
                 from collections import Counter
-                wb = openpyxl.load_workbook(filepath, data_only=True, read_only=True)
+                sheet_names = xlsx_parser.get_xlsx_sheet_names(filepath)
                 ot_sheet_name = None
-                for name in wb.sheetnames:
+                for name in sheet_names:
                     if name.strip().upper() in ('OT', 'ESTADO DE OT'):
                         ot_sheet_name = name
                         break
                 if not ot_sheet_name:
-                    ot_sheet_name = wb.sheetnames[0]
-                ws = wb[ot_sheet_name]
-                # CS -> columna D (idx 4), MAESTROS -> columna E (idx 5)
+                    ot_sheet_name = sheet_names[0] if sheet_names else 'OT'
+                
                 col_idx = 5 if unidad.upper() == 'MAESTROS' else 4
                 meses_c = Counter()
                 anios_c = Counter()
-                # Solo 20 filas para minimizar uso de RAM
-                for row in ws.iter_rows(min_row=3, max_row=22, values_only=True):
+                
+                parser = xlsx_parser.read_xlsx_rows_smart(filepath, ot_sheet_name)
+                count = 0
+                for row, header_map in parser:
+                    if header_map:
+                        continue
+                    count += 1
+                    if count > 20:
+                        break
                     if len(row) >= col_idx:
                         val = row[col_idx - 1]
-                        if val and hasattr(val, 'month'):
-                            meses_c[val.month] += 1
-                            anios_c[val.year] += 1
+                        date_match = re.match(r'^(\d{4})-(\d{2})-\d{2}', str(val))
+                        if date_match:
+                            year = int(date_match.group(1))
+                            month = int(date_match.group(2))
+                            meses_c[month] += 1
+                            anios_c[year] += 1
                 if meses_c and not mes_detectado:
                     mes_detectado = MESES_INV.get(meses_c.most_common(1)[0][0])
                 if anios_c and not anio_detectado:
                     anio_detectado = str(int(anios_c.most_common(1)[0][0]))
-                wb.close()
             except Exception as e:
-                print(f"Error detectando fecha con openpyxl: {e}")
+                print(f"Error detectando fecha con xlsx_parser: {e}")
 
         # Fallback: año actual
         if not anio_detectado:
