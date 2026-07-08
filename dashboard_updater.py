@@ -211,85 +211,52 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
                 continue
                 
             if h:
-                tipo = safe_str(row[tipo_i] if tipo_i >= 0 and tipo_i < len(row) else None).upper()
-                
-                acep = safe_str(row[acep_i] if acep_i >= 0 and acep_i < len(row) else None).upper()
-                marca = safe_str(row[marca_i] if marca_i >= 0 and marca_i < len(row) else None, 'DESCONOCIDA').upper()
-                rms = safe_str(row[rms_i] if rms_i >= 0 and rms_i < len(row) else None, 'N/A')
-                desc = safe_str(row[desc_i] if desc_i >= 0 and desc_i < len(row) else None, '')
-                cant = safe_int(row[cant_i] if cant_i >= 0 and cant_i < len(row) else None, 1)
-                ot_n = safe_str(row[ot_i] if ot_i >= 0 and ot_i < len(row) else None, '')
-                link = safe_str(row[link_i] if link_i >= 0 and link_i < len(row) else None, '')
-                fecha = row[fecha_i] if fecha_i >= 0 and fecha_i < len(row) else ""
-                
-                base = {
-                    "marca": marca, "rms": rms, "descripcion": desc,
-                    "fecha": fecha, "anio": int(anio), "mes": mes, "mesNum": int(mes_num),
-                    "ot": ot_n, "unidad_negocio": unidad.upper()
-                }
-                
-                # Garantias y Servicios (tabs Garantias/Servicios)
-                if tipo:
-                    if "GARANTIA" in tipo:
-                        norm = "GARANTIA TOTAL" if "TOTAL" in tipo else "GARANTIA PARCIAL"
-                        garantia_data.append({**base, "tipoGarantia": norm})
-                        cnt_g += 1
-                    elif "SERVICIO" in tipo:
-                        servicio_data.append(base)
-                        cnt_s += 1
-
-                # ----------------- SEGUIMIENTO DE TRAMITES -----------------
-                es_seguimiento = False
-                no_caso = ""
-                estado_inicial = "Pendiente de Subir"
-                
-                if unidad.upper() == 'CS':
-                    # CS Logic
-                    validador_garantia_val = safe_str(row[validador_garantia_i] if validador_garantia_i < len(row) else None).upper()
-                    boleta_rnn_val = safe_str(row[boleta_rnn_i] if boleta_rnn_i < len(row) else None).strip()
+                try:
+                    tipo = safe_str(row[tipo_i] if tipo_i >= 0 and tipo_i < len(row) else None).upper()
                     
-                    if "DENTRO" in validador_garantia_val:
-                        # Es un reclamo de CS
-                        es_seguimiento = True
+                    acep = safe_str(row[acep_i] if acep_i >= 0 and acep_i < len(row) else None).upper()
+                    marca = safe_str(row[marca_i] if marca_i >= 0 and marca_i < len(row) else None, 'DESCONOCIDA').upper()
+                    rms = safe_str(row[rms_i] if rms_i >= 0 and rms_i < len(row) else None, 'N/A')
+                    desc = safe_str(row[desc_i] if desc_i >= 0 and desc_i < len(row) else None, '')
+                    cant = safe_int(row[cant_i] if cant_i >= 0 and cant_i < len(row) else None, 1)
+                    ot_n = safe_str(row[ot_i] if ot_i >= 0 and ot_i < len(row) else None, '')
+                    link = safe_str(row[link_i] if link_i >= 0 and link_i < len(row) else None, '')
+                    fecha = row[fecha_i] if fecha_i >= 0 and fecha_i < len(row) else ""
+                    
+                    base = {
+                        "marca": marca, "rms": rms, "descripcion": desc,
+                        "fecha": fecha, "anio": int(anio), "mes": mes, "mesNum": int(mes_num),
+                        "ot": ot_n, "unidad_negocio": unidad.upper()
+                    }
+                    
+                    # Garantias y Servicios (tabs Garantias/Servicios)
+                    if tipo:
+                        if "GARANTIA" in tipo:
+                            norm = "GARANTIA TOTAL" if "TOTAL" in tipo else "GARANTIA PARCIAL"
+                            garantia_data.append({**base, "tipoGarantia": norm})
+                            cnt_g += 1
+                        elif "SERVICIO" in tipo:
+                            servicio_data.append(base)
+                            cnt_s += 1
+
+                    # ----------------- SEGUIMIENTO DE TRAMITES -----------------
+                    es_seguimiento = False
+                    no_caso = ""
+                    estado_inicial = "Pendiente de Subir"
+                    
+                    if unidad.upper() == 'CS':
+                        # CS Logic
+                        validador_garantia_val = safe_str(row[validador_garantia_i] if validador_garantia_i < len(row) else None).upper()
+                        boleta_rnn_val = safe_str(row[boleta_rnn_i] if boleta_rnn_i < len(row) else None).strip()
                         
-                        # Validar nomenclatura de LG e Hisense
-                        if "LG" in marca:
-                            # LG: RNN + 12 digitos
-                            rnn_match = re.search(r'RNN\d{12}', boleta_rnn_val, re.IGNORECASE)
-                            if rnn_match:
-                                no_caso = rnn_match.group(0).upper()
-                                estado_inicial = "Subido a Portal (Abierto)"
-                            else:
-                                no_caso = "Falta trámite en portal"
-                                estado_inicial = "Pendiente de Subir"
-                        elif "HISENSE" in marca:
-                            # Hisense: 9 digitos
-                            his_match = re.search(r'\b\d{9}\b', boleta_rnn_val)
-                            if his_match:
-                                no_caso = his_match.group(0)
-                                estado_inicial = "Subido a Portal (Abierto)"
-                            else:
-                                no_caso = "Falta trámite en portal"
-                                estado_inicial = "Pendiente de Subir"
-                        else:
-                            # Otras marcas
-                            no_caso = boleta_rnn_val
-                            if no_caso:
-                                estado_inicial = "Subido a Portal (Abierto)"
-                            else:
-                                estado_inicial = "Pendiente de Subir"
-                else:
-                    # MAESTROS Logic
-                    # Solo LG y Hisense
-                    if "LG" in marca or "HISENSE" in marca:
-                        actividad_val = safe_str(row[actividad_i] if actividad_i < len(row) else None).upper()
-                        externo_rnn_val = safe_str(row[externo_rnn_i] if externo_rnn_i < len(row) else None).strip()
-                        
-                        if "RECLAMO" in actividad_val:
+                        if "DENTRO" in validador_garantia_val:
+                            # Es un reclamo de CS
                             es_seguimiento = True
                             
+                            # Validar nomenclatura de LG e Hisense
                             if "LG" in marca:
-                                rnn_match = re.search(r'RNN\d{12}', externo_rnn_val, re.IGNORECASE)
+                                # LG: RNN + 12 digitos
+                                rnn_match = re.search(r'RNN\d{12}', boleta_rnn_val, re.IGNORECASE)
                                 if rnn_match:
                                     no_caso = rnn_match.group(0).upper()
                                     estado_inicial = "Subido a Portal (Abierto)"
@@ -297,65 +264,105 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
                                     no_caso = "Falta trámite en portal"
                                     estado_inicial = "Pendiente de Subir"
                             elif "HISENSE" in marca:
-                                his_match = re.search(r'\b\d{9}\b', externo_rnn_val)
+                                # Hisense: 9 digitos
+                                his_match = re.search(r'\b\d{9}\b', boleta_rnn_val)
                                 if his_match:
                                     no_caso = his_match.group(0)
                                     estado_inicial = "Subido a Portal (Abierto)"
                                 else:
                                     no_caso = "Falta trámite en portal"
                                     estado_inicial = "Pendiente de Subir"
-
-                # Guardar en seguimiento
-                if es_seguimiento and ot_n:
-                    key = f"{unidad.upper()}-{ot_n}"
-                    if key not in seg_map:
-                        # Agregar nuevo
-                        seguimiento_data.append({
-                            "ot": ot_n, "marca": marca, "descripcion": desc,
-                            "fecha_ingreso": fecha, "unidad_negocio": unidad.upper(),
-                            "anio": int(anio), "mes": mes, "mesNum": int(mes_num),
-                            "estado": estado_inicial, "notas": "", "fecha_estimada": "",
-                            "no_caso_portal": no_caso, "fecha_cierre_portal": "", "monto_mano_obra": 0
-                        })
-                        seg_map[key] = seguimiento_data[-1]
-                        cnt_seg += 1
+                            else:
+                                # Otras marcas
+                                no_caso = boleta_rnn_val
+                                if no_caso:
+                                    estado_inicial = "Subido a Portal (Abierto)"
+                                else:
+                                    estado_inicial = "Pendiente de Subir"
                     else:
-                        # Actualizar si no está cerrado
-                        existing_rec = seg_map[key]
-                        if existing_rec.get("estado") != "Reclamado/Cerrado":
-                            old_caso = existing_rec.get("no_caso_portal", "")
-                            if (not old_caso or old_caso == "Falta trámite en portal") and no_caso and no_caso != "Falta trámite en portal":
-                                existing_rec["no_caso_portal"] = no_caso
-                                existing_rec["estado"] = "Subido a Portal (Abierto)"
-                            if not existing_rec.get("descripcion") and desc:
-                                existing_rec["descripcion"] = desc
-                            if not existing_rec.get("fecha_ingreso") and fecha:
-                                existing_rec["fecha_ingreso"] = fecha
-                            # También podemos actualizar la marca o el mes/año si no los tenía
-                            if not existing_rec.get("marca") and marca:
-                                existing_rec["marca"] = marca
-                    
-                # Repuestos
-                es_parcial = 'PARCIAL' in tipo
-                es_svc_apro = 'SERVICIO' in tipo and acep == 'SI'
-                if es_parcial or es_svc_apro:
-                    order_code = extract_order_code(link)
-                    if order_code:
-                        parts = fetch_order_parts(order_code, api_cache)
-                        for p in parts:
-                            desc_part = p.get('descripcion', '')
-                            if is_spare_part(desc_part):
-                                part_code = extract_part_code(p)
-                                clean_desc = clean_item_description(desc_part, part_code)
-                                cant_part = safe_int(p.get('cantidad'), 1)
-                                parts_data.append({
-                                    "ot": ot_n, "marca": marca, "codigo_repuesto": part_code,
-                                    "descripcion": clean_desc, "cantidad": cant_part,
-                                    "tipo_garantia": tipo, "aceptacion": acep, "link": link,
-                                    "fecha": fecha, "anio": int(anio), "mes": mes, "mesNum": int(mes_num),
-                                    "unidad_negocio": unidad.upper()
-                                })
-                                cnt_p += 1
+                        # MAESTROS Logic
+                        # Solo LG y Hisense
+                        if "LG" in marca or "HISENSE" in marca:
+                            actividad_val = safe_str(row[actividad_i] if actividad_i < len(row) else None).upper()
+                            externo_rnn_val = safe_str(row[externo_rnn_i] if externo_rnn_i < len(row) else None).strip()
+                            
+                            if "RECLAMO" in actividad_val:
+                                es_seguimiento = True
+                                
+                                if "LG" in marca:
+                                    rnn_match = re.search(r'RNN\d{12}', externo_rnn_val, re.IGNORECASE)
+                                    if rnn_match:
+                                        no_caso = rnn_match.group(0).upper()
+                                        estado_inicial = "Subido a Portal (Abierto)"
+                                    else:
+                                        no_caso = "Falta trámite en portal"
+                                        estado_inicial = "Pendiente de Subir"
+                                elif "HISENSE" in marca:
+                                    his_match = re.search(r'\b\d{9}\b', externo_rnn_val)
+                                    if his_match:
+                                        no_caso = his_match.group(0)
+                                        estado_inicial = "Subido a Portal (Abierto)"
+                                    else:
+                                        no_caso = "Falta trámite en portal"
+                                        estado_inicial = "Pendiente de Subir"
+
+                    # Guardar en seguimiento
+                    if es_seguimiento and ot_n:
+                        key = f"{unidad.upper()}-{ot_n}"
+                        if key not in seg_map:
+                            # Agregar nuevo
+                            seguimiento_data.append({
+                                "ot": ot_n, "marca": marca, "descripcion": desc,
+                                "fecha_ingreso": fecha, "unidad_negocio": unidad.upper(),
+                                "anio": int(anio), "mes": mes, "mesNum": int(mes_num),
+                                "estado": estado_inicial, "notes": "", "fecha_estimada": "",
+                                "no_caso_portal": no_caso, "fecha_cierre_portal": "", "monto_mano_obra": 0
+                            })
+                            seg_map[key] = seguimiento_data[-1]
+                            cnt_seg += 1
+                        else:
+                            # Actualizar si no está cerrado
+                            existing_rec = seg_map[key]
+                            if existing_rec.get("estado") != "Reclamado/Cerrado":
+                                old_caso = existing_rec.get("no_caso_portal", "")
+                                if (not old_caso or old_caso == "Falta trámite en portal") and no_caso and no_caso != "Falta trámite en portal":
+                                    existing_rec["no_caso_portal"] = no_caso
+                                    existing_rec["estado"] = "Subido a Portal (Abierto)"
+                                if not existing_rec.get("descripcion") and desc:
+                                    existing_rec["descripcion"] = desc
+                                if not existing_rec.get("fecha_ingreso") and fecha:
+                                    existing_rec["fecha_ingreso"] = fecha
+                                # También podemos actualizar la marca o el mes/año
+                                if not existing_rec.get("marca") and marca:
+                                    existing_rec["marca"] = marca
+                                existing_rec["anio"] = int(anio)
+                                existing_rec["mes"] = mes
+                                existing_rec["mesNum"] = int(mes_num)
+                        
+                    # Repuestos
+                    es_parcial = 'PARCIAL' in tipo
+                    es_svc_apro = 'SERVICIO' in tipo and acep == 'SI'
+                    if es_parcial or es_svc_apro:
+                        order_code = extract_order_code(link)
+                        if order_code:
+                            parts = fetch_order_parts(order_code, api_cache)
+                            for p in parts:
+                                if p and isinstance(p, dict):
+                                    desc_part = p.get('descripcion', '')
+                                    if is_spare_part(desc_part):
+                                        part_code = extract_part_code(p)
+                                        clean_desc = clean_item_description(desc_part, part_code)
+                                        cant_part = safe_int(p.get('cantidad'), 1)
+                                        parts_data.append({
+                                            "ot": ot_n, "marca": marca, "codigo_repuesto": part_code,
+                                            "descripcion": clean_desc, "cantidad": cant_part,
+                                            "tipo_garantia": tipo, "aceptacion": acep, "link": link,
+                                            "fecha": fecha, "anio": int(anio), "mes": mes, "mesNum": int(mes_num),
+                                            "unidad_negocio": unidad.upper()
+                                        })
+                                        cnt_p += 1
+                except Exception as row_ex:
+                    print(f"Error procesando fila {row[:4] if row else 'vacia'}: {row_ex}")
     except Exception as e:
         print(f"Error procesando {filepath}: {e}")
         import traceback; traceback.print_exc()

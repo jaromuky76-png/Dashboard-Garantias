@@ -109,8 +109,11 @@ def read_xlsx_rows_smart(filepath, sheet_name):
                 if val_elem is not None:
                     val = val_elem.text or ""
                     if t == 's':
-                        idx = int(val)
-                        val = shared_strings[idx] if idx < len(shared_strings) else ""
+                        try:
+                            idx = int(val)
+                            val = shared_strings[idx] if idx < len(shared_strings) else ""
+                        except (ValueError, TypeError):
+                            val = ""
                     elif t == 'b':
                         val = (val == '1')
                 
