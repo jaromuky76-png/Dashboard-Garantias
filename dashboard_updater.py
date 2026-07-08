@@ -101,8 +101,7 @@ def fetch_order_parts(order_code, cache):
             if data.get('error') == 0:
                 parts = data.get('datos', {}).get('servicios_repuestos', [])
                 cache[order_code] = parts
-                save_cache(cache)
-                time.sleep(1)
+                time.sleep(0.5)  # Slightly faster but still polite
                 return parts
     except Exception as e:
         print(f"     Error al consultar {order_code}: {e}")
@@ -281,7 +280,8 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
         except:
             pass
 
-    # Guardar los 4 archivos
+    # Guardar cache y archivos
+    save_cache(api_cache)
     save_json(output_js, 'PRELOADED_DATA', garantia_data, "Garantias", "PRELOADED_META")
     save_json(output_svc, 'PRELOADED_SERVICIO', servicio_data, "Servicios", "PRELOADED_META_SVC")
     save_json(output_pts, 'partsData', parts_data, "Repuestos", "PARTS_META")

@@ -4,10 +4,29 @@ import gc
 import json
 import subprocess
 import threading
+import sys
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 OT_BASE_DIR = os.environ.get('OT_BASE_DIR', os.path.abspath(os.path.join(BASE_DIR, "..", "OT")))
+
+# Redirigir stdout/stderr a archivo para diagnósticos remotos
+class DiagnosticLogger(object):
+    def __init__(self, filename="server.log"):
+        self.terminal = sys.stdout
+        self.log = open(os.path.join(BASE_DIR, filename), "a", encoding="utf-8")
+    def write(self, message):
+        if self.terminal:
+            self.terminal.write(message)
+        self.log.write(message)
+        self.log.flush()
+    def flush(self):
+        if self.terminal:
+            self.terminal.flush()
+        self.log.flush()
+
+sys.stdout = DiagnosticLogger("server.log")
+sys.stderr = DiagnosticLogger("server.log")
 
 MESES_MAP = {
     'ENERO': 1, 'FEBRERO': 2, 'MARZO': 3, 'ABRIL': 4,
@@ -173,6 +192,16 @@ class DashboardServer(SimpleHTTPRequestHandler):
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({'processing': is_processing}).encode())
+        elif self.path == '/api/logs':
+            self.send_response(200)
+            self.send_header('Content-type', 'text/plain; charset=utf-8')
+            self.end_headers()
+            log_path = os.path.join(BASE_DIR, "server.log")
+            if os.path.exists(log_path):
+                with open(log_path, "r", encoding="utf-8") as f:
+                    self.wfile.write(f.read().encode('utf-8'))
+            else:
+                self.wfile.write(b"No log file found.")
         else:
             super().do_GET()
 
