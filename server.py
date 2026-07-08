@@ -298,7 +298,11 @@ class DashboardServer(SimpleHTTPRequestHandler):
                         token = os.environ.get("GITHUB_TOKEN")
                         if token:
                             repo_url = f"https://jaromuky76-png:{token}@github.com/jaromuky76-png/Dashboard-Garantias.git"
-                            subprocess.run(["git", "remote", "set-url", "origin", repo_url], cwd=BASE_DIR, check=False)
+                            check_origin = subprocess.run(["git", "remote", "get-url", "origin"], cwd=BASE_DIR, capture_output=True)
+                            if check_origin.returncode == 0:
+                                subprocess.run(["git", "remote", "set-url", "origin", repo_url], cwd=BASE_DIR, check=False)
+                            else:
+                                subprocess.run(["git", "remote", "add", "origin", repo_url], cwd=BASE_DIR, check=False)
                         push_res = subprocess.run(
                             ["git", "push", "origin", "HEAD:master"],
                             cwd=BASE_DIR, capture_output=True, text=True
