@@ -133,7 +133,41 @@ def load_existing_json(filepath, var_name):
         print(f"Error cargando {filepath}: {e}")
     return []
 
-def save_json(filepath, var_name, data, desc, meta_var_name):
+def scan_stored_files():
+    folder_ot = os.environ.get('OT_BASE_DIR', os.path.abspath(os.path.join(BASE_DIR, "..", "OT")))
+    file_registry = []
+    if not os.path.exists(folder_ot):
+        return file_registry
+    
+    for root, dirs, files in os.walk(folder_ot):
+        for fl in sorted(files):
+            if (fl.endswith(".xlsx") or fl.endswith(".xls")) and not fl.startswith("~"):
+                path = os.path.join(root, fl)
+                try:
+                    file_stat = os.stat(path)
+                    mod_time = datetime.datetime.fromtimestamp(file_stat.st_mtime).strftime('%Y-%m-%d %H:%M')
+                    file_size_kb = round(file_stat.st_size / 1024, 1)
+                    
+                    rel_path = os.path.relpath(root, folder_ot)
+                    parts = rel_path.split(os.sep)
+                    
+                    unidad = parts[0] if len(parts) > 0 else 'UNKNOWN'
+                    anio = parts[1] if len(parts) > 1 else 'UNKNOWN'
+                    mes = parts[2] if len(parts) > 2 else 'UNKNOWN'
+                    
+                    file_registry.append({
+                        "nombre": fl,
+                        "unidad": unidad.upper(),
+                        "anio": anio,
+                        "mes": mes.upper(),
+                        "tamano_kb": file_size_kb,
+                        "modificado": mod_time
+                    })
+                except Exception as e:
+                    print(f"Error scanning file {path}: {e}")
+    return file_registry
+
+def save_json(filepath, var_name, data, desc, meta_var_name, file_registry=None):
     try:
         archivos = set()
         for row in data:
@@ -147,6 +181,9 @@ def save_json(filepath, var_name, data, desc, meta_var_name):
             "archivosProcessados": len(archivos),
             "errores": 0
         }
+        if file_registry is not None:
+            meta["listaArchivos"] = file_registry
+            
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(f"// Generado por dashboard_updater.py -- {desc}\n")
             f.write(f"window.{var_name} = {json.dumps(data, ensure_ascii=False)};\n")
@@ -371,10 +408,28 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
 
     # Guardar cache y archivos
     save_cache(api_cache)
-    save_json(output_js, 'PRELOADED_DATA', garantia_data, "Garantias", "PRELOADED_META")
-    save_json(output_svc, 'PRELOADED_SERVICIO', servicio_data, "Servicios", "PRELOADED_META_SVC")
-    save_json(output_pts, 'partsData', parts_data, "Repuestos", "PARTS_META")
-    save_json(output_seg, 'PRELOADED_SEGUIMIENTO', seguimiento_data, "Seguimiento", "SEGUIMIENTO_META")
+    file_reg = scan_stored_files()
+    save_json(output_js, 'PRELOADED_DATA', garantia_data, "Garantias", "PRELOADED_META", file_reg)
+    save_json(output_svc, 'PRELOADED_SERVICIO', servicio_data, "Servicios", "PRELOADED_META_SVC", file_reg)
+    save_json(output_pts, 'partsData', parts_data, "Repuestos", "PARTS_META", file_reg)
+    save_json(output_seg, 'PRELOADED_SEGUIMIENTO', seguimiento_data, "Seguimiento", "SEGUIMIENTO_META", file_reg)
     
     print(f"Finalizado: {cnt_g} garantias, {cnt_s} servicios, {cnt_p} repuestos, {cnt_seg} nuevos seguimientos agregados.")
     return True
+
+if __name__ == "__main__":
+    reg = scan_stored_files()
+    print(f"Scanned files count: {len(reg)}")
+    if len(reg) > 0:
+        print(f"Sample file: {reg[0]}")
+    
+    garantia_data = load_existing_json(output_js, 'PRELOADED_DATA')
+    servicio_data = load_existing_json(output_svc, 'PRELOADED_SERVICIO')
+    parts_data = load_existing_json(output_pts, 'partsData')
+    seguimiento_data = load_existing_json(output_seg, 'PRELOADED_SEGUIMIENTO')
+    
+    save_json(output_js, 'PRELOADED_DATA', garantia_data, "Garantias", "PRELOADED_META", reg)
+    save_json(output_svc, 'PRELOADED_SERVICIO', servicio_data, "Servicios", "PRELOADED_META_SVC", reg)
+    save_json(output_pts, 'partsData', parts_data, "Repuestos", "PARTS_META", reg)
+    save_json(output_seg, 'PRELOADED_SEGUIMIENTO', seguimiento_data, "Seguimiento", "SEGUIMIENTO_META", reg)
+    print("Preloaded files metadata populated in all JS files.")

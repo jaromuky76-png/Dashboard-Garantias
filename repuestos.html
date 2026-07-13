@@ -42,6 +42,7 @@
                     <a href="servicio.html" class="text-slate-400 hover:text-white transition-colors pb-2">Servicios</a>
                     <a href="repuestos.html" class="text-primary font-semibold border-b-2 border-primary pb-2">Sugerido de Compras</a>
                     <a href="seguimiento.html" class="text-slate-400 hover:text-white transition-colors pb-2">Seguimiento Trámites</a>
+                    <a href="archivos.html" class="text-slate-400 hover:text-white transition-colors pb-2">Archivos Resguardados</a>
             </nav>
         </div>
     </header>
@@ -91,12 +92,33 @@
                     </select>
                 </div>
             </div>
-            <div>
-                <p class="text-xs text-slate-400 uppercase font-semibold mb-1">Marca</p>
-                <select id="filter-brand" class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 min-w-[160px]">
-                    <option value="ALL">Todas las Marcas</option>
-                </select>
+            
+            <!-- Custom Multi-Brand Dropdown -->
+            <div class="relative">
+                <p class="text-xs text-slate-400 uppercase font-semibold mb-1">Marca(s)</p>
+                <button id="brand-multi-select-btn" type="button" class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 min-w-[200px] text-left flex justify-between items-center select-none active:scale-[0.99] transition-all">
+                    <span id="selected-brands-label">Todas las Marcas</span>
+                    <svg class="w-4 h-4 text-slate-400 transition-transform duration-200" id="brand-select-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                
+                <!-- Dropdown panel -->
+                <div id="brand-multi-select-dropdown" class="hidden absolute left-0 mt-1 w-64 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl z-50 p-3 space-y-2 max-h-80 flex flex-col">
+                    <!-- Search input inside dropdown -->
+                    <div class="relative">
+                        <input type="text" id="brand-search" placeholder="Buscar marca..." class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                    <!-- Quick actions -->
+                    <div class="flex justify-between text-[11px] text-slate-400 border-b border-slate-700/50 pb-2">
+                        <button type="button" id="btn-select-all-brands" class="hover:text-blue-400 transition-colors">Seleccionar Todas</button>
+                        <button type="button" id="btn-clear-brands" class="hover:text-red-400 transition-colors">Limpiar</button>
+                    </div>
+                    <!-- Checkbox container -->
+                    <div id="brand-checkboxes-container" class="space-y-1.5 pt-1 overflow-y-auto max-h-48 pr-1">
+                        <!-- Filled dynamically -->
+                    </div>
+                </div>
             </div>
+
             <button onclick="applyPeriodAndBrandFilter()"
                 class="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-5 py-2 rounded-lg text-sm transition-all flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6z"/></svg>

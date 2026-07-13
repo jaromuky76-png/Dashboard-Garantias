@@ -11,6 +11,8 @@ let orderHistory    = {};
 let cutoffState     = { month: 0, year: new Date().getFullYear() };
 let chartFreq       = null;
 let chartQty        = null;
+let selectedBrands  = new Set();
+let allUniqueBrands = [];
 
 const MESES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
@@ -134,14 +136,111 @@ function populatePeriodSelectors() {
     });
 }
 
+function setupBrandMultiSelect() {
+    const btn = document.getElementById('brand-multi-select-btn');
+    const dropdown = document.getElementById('brand-multi-select-dropdown');
+    const searchInput = document.getElementById('brand-search');
+    const btnAll = document.getElementById('btn-select-all-brands');
+    const btnClear = document.getElementById('btn-clear-brands');
+
+    if (!btn || !dropdown) return;
+
+    // Toggle dropdown visibility and animate arrow
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdown.classList.toggle('hidden');
+        document.getElementById('brand-select-arrow')?.classList.toggle('rotate-180');
+    });
+
+    // Close dropdown on click outside
+    document.addEventListener('click', (e) => {
+        if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.add('hidden');
+            document.getElementById('brand-select-arrow')?.classList.remove('rotate-180');
+        }
+    });
+
+    // Search brands filter
+    searchInput?.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase().trim();
+        const items = dropdown.querySelectorAll('.brand-checkbox-item');
+        items.forEach(item => {
+            const brandName = item.getAttribute('data-brand').toLowerCase();
+            if (brandName.includes(query)) {
+                item.classList.remove('hidden');
+            } else {
+                item.classList.add('hidden');
+            }
+        });
+    });
+
+    // Select All Brands action
+    btnAll?.addEventListener('click', () => {
+        allUniqueBrands.forEach(b => selectedBrands.add(b));
+        updateBrandCheckboxesUI();
+        updateBrandButtonLabel();
+    });
+
+    // Clear Brands action
+    btnClear?.addEventListener('click', () => {
+        selectedBrands.clear();
+        updateBrandCheckboxesUI();
+        updateBrandButtonLabel();
+    });
+}
+
 function populateBrandSelector() {
-    const brands = [...new Set(filteredAgg.map(i => i.marca))].sort();
-    const el = document.getElementById('filter-brand');
-    if (!el) return;
-    const prev = el.value;
-    el.innerHTML = '<option value="ALL">Todas las Marcas</option>' +
-        brands.map(b => `<option value="${b}">${b}</option>`).join('');
-    if (brands.includes(prev)) el.value = prev;
+    allUniqueBrands = [...new Set(allRawData.map(i => i.marca).filter(Boolean))].sort();
+    const container = document.getElementById('brand-checkboxes-container');
+    if (!container) return;
+
+    container.innerHTML = allUniqueBrands.map(brand => {
+        const checked = selectedBrands.has(brand) ? 'checked' : '';
+        return `
+            <label class="brand-checkbox-item flex items-center space-x-2 px-2 py-1 hover:bg-slate-700/50 rounded cursor-pointer transition-colors" data-brand="${brand}">
+                <input type="checkbox" value="${brand}" ${checked} class="brand-checkbox rounded border-slate-600 bg-slate-900 text-blue-500 focus:ring-0 focus:ring-offset-0">
+                <span class="text-sm text-slate-300 select-none">${brand}</span>
+            </label>
+        `;
+    }).join('');
+
+    // Event listener on checkboxes
+    container.querySelectorAll('.brand-checkbox').forEach(cb => {
+        cb.addEventListener('change', (e) => {
+            const brand = e.target.value;
+            if (e.target.checked) {
+                selectedBrands.add(brand);
+            } else {
+                selectedBrands.delete(brand);
+            }
+            updateBrandButtonLabel();
+        });
+    });
+
+    updateBrandButtonLabel();
+}
+
+function updateBrandCheckboxesUI() {
+    const container = document.getElementById('brand-checkboxes-container');
+    if (!container) return;
+    container.querySelectorAll('.brand-checkbox').forEach(cb => {
+        cb.checked = selectedBrands.has(cb.value);
+    });
+}
+
+function updateBrandButtonLabel() {
+    const label = document.getElementById('selected-brands-label');
+    if (!label) return;
+
+    if (selectedBrands.size === 0 || selectedBrands.size === allUniqueBrands.length) {
+        label.textContent = "Todas las Marcas";
+    } else if (selectedBrands.size === 1) {
+        label.textContent = Array.from(selectedBrands)[0];
+    } else if (selectedBrands.size <= 3) {
+        label.textContent = Array.from(selectedBrands).join(', ');
+    } else {
+        label.textContent = `${selectedBrands.size} marcas sel.`;
+    }
 }
 
 // ── Aplicar filtros de período y marca ────────────────────────────────────────
@@ -150,7 +249,6 @@ function applyPeriodAndBrandFilter() {
     const fromMonth = parseInt(document.getElementById('period-from-month')?.value || '0');
     const toYear    = document.getElementById('period-to-year')?.value    || 'ALL';
     const toMonth   = parseInt(document.getElementById('period-to-month')?.value || '0');
-    const brand     = document.getElementById('filter-brand')?.value      || 'ALL';
 
     let raw = allRawData;
 
@@ -176,11 +274,12 @@ function applyPeriodAndBrandFilter() {
         });
     }
 
-    // Filtro marca
-    if (brand !== 'ALL') raw = raw.filter(r => r.marca === brand);
+    // Filtro marcas (Multi)
+    if (selectedBrands.size > 0 && selectedBrands.size < allUniqueBrands.length) {
+        raw = raw.filter(r => selectedBrands.has(r.marca));
+    }
 
     filteredAgg = aggregateParts(raw);
-    populateBrandSelector();   // refresh brands in dropdown
     renderCharts(filteredAgg);
     updateKPIs();
     renderTable();
@@ -310,7 +409,7 @@ function setupEventListeners() {
     document.getElementById('search-input')?.addEventListener('input', renderTable);
     document.getElementById('filter-status')?.addEventListener('change', renderTable);
     document.getElementById('btn-export-all')?.addEventListener('click', exportCurrentView);
-    // Periodo y marca — se aplican solo al picar el botón
+    setupBrandMultiSelect();
 }
 
 function onCheckboxChange() {

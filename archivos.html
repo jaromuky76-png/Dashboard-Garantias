@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Archivos Resguardados - OT</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: '#0f172a',
+                        card: '#1e293b',
+                        primary: '#3b82f6',
+                        secondary: '#8b5cf6',
+                        success: '#10b981',
+                        danger: '#ef4444',
+                        teal: '#14b8a6',
+                        warning: '#f59e0b'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+        }
+        table { border-collapse: separate; border-spacing: 0; width: 100%; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        th {
+            background-color: rgba(0,0,0,0.2);
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+        td { color: #cbd5e1; }
+        .badge {
+            padding: 4px 8px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .badge-cs { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+        .badge-maestros { background: rgba(139, 92, 246, 0.2); color: #c084fc; }
+        .badge-active { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-6">
+    <div class="max-w-7xl mx-auto space-y-6 animate-fadeIn">
+        
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400">
+                    Archivos de OTs Resguardados
+                </h1>
+                <p class="text-slate-400 mt-1">Historial y estado de los archivos Excel evaluados en el sistema</p>
+                <nav class="flex space-x-4 mt-4">
+                    <a href="index.html" class="text-slate-400 hover:text-white transition-colors pb-2">Garantías</a>
+                    <a href="servicio.html" class="text-slate-400 hover:text-white transition-colors pb-2">Servicios</a>
+                    <a href="repuestos.html" class="text-slate-400 hover:text-white transition-colors pb-2">Sugerido de Compras</a>
+                    <a href="seguimiento.html" class="text-slate-400 hover:text-white transition-colors pb-2">Seguimiento Trámites</a>
+                    <a href="archivos.html" class="text-indigo-400 font-semibold border-b-2 border-indigo-400 pb-2">Archivos Resguardados</a>
+                </nav>
+            </div>
+        </header>
+
+        <!-- KPIs -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div class="glass-card p-6 border-l-4 border-l-indigo-500">
+                <h3 class="text-slate-400 text-sm font-semibold uppercase tracking-wider mb-2">Total Archivos</h3>
+                <p id="kpi-total-files" class="text-3xl font-bold text-white">0</p>
+            </div>
+            <div class="glass-card p-6 border-l-4 border-l-blue-500">
+                <h3 class="text-slate-400 text-sm font-semibold uppercase tracking-wider mb-2">Centro de Servicios (CS)</h3>
+                <p id="kpi-cs-files" class="text-3xl font-bold text-blue-400">0</p>
+            </div>
+            <div class="glass-card p-6 border-l-4 border-l-purple-500">
+                <h3 class="text-slate-400 text-sm font-semibold uppercase tracking-wider mb-2">Maestros</h3>
+                <p id="kpi-maestros-files" class="text-3xl font-bold text-purple-400">0</p>
+            </div>
+            <div class="glass-card p-6 border-l-4 border-l-teal-500">
+                <h3 class="text-slate-400 text-sm font-semibold uppercase tracking-wider mb-2">Espacio Ocupado</h3>
+                <p id="kpi-total-size" class="text-3xl font-bold text-teal-400">0 KB</p>
+            </div>
+        </div>
+
+        <!-- Filters Section -->
+        <div class="glass-card p-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <!-- Search -->
+                <div class="md:col-span-2">
+                    <p class="text-xs text-slate-400 uppercase font-semibold mb-1">Buscar por nombre</p>
+                    <input type="text" id="search-filename" placeholder="Ej. ABRIL, 2025..." class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                </div>
+                <!-- Unit Filter -->
+                <div>
+                    <p class="text-xs text-slate-400 uppercase font-semibold mb-1">Unidad de Negocio</p>
+                    <select id="filter-unit" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                        <option value="ALL">Todas</option>
+                        <option value="CS">Centro de Servicios (CS)</option>
+                        <option value="MAESTROS">Maestros</option>
+                    </select>
+                </div>
+                <!-- Year Filter -->
+                <div>
+                    <p class="text-xs text-slate-400 uppercase font-semibold mb-1">Año</p>
+                    <select id="filter-year" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                        <option value="ALL">Todos los años</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- File List Table -->
+        <div class="glass-card overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-700/50 flex justify-between items-center bg-slate-850">
+                <h2 class="text-lg font-bold text-white flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Historial de Archivos Guardados
+                </h2>
+                <span class="text-xs text-slate-400" id="table-row-count">Mostrando 0 de 0 archivos</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full">
+                    <thead>
+                        <tr>
+                            <th>Unidad</th>
+                            <th>Año</th>
+                            <th>Mes</th>
+                            <th>Nombre del Archivo</th>
+                            <th>Tamaño</th>
+                            <th>Última Modificación</th>
+                            <th class="text-center">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="files-table-body">
+                        <tr>
+                            <td colspan="7" class="text-center py-8 text-slate-500">Cargando lista de archivos...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Data Preloading script generated by Python -->
+    <script src="data.js"></script>
+
+    <!-- Page Controller Logic -->
+    <script>
+        let allFiles = [];
+
+        function initPage() {
+            // Read from window.PRELOADED_META which has the listaArchivos
+            const meta = window.PRELOADED_META;
+            if (meta && meta.listaArchivos) {
+                allFiles = meta.listaArchivos;
+            } else {
+                console.warn("No metadata found in PRELOADED_META");
+            }
+
+            // Populate Year filter
+            const years = [...new Set(allFiles.map(f => f.anio))].sort();
+            const yearFilter = document.getElementById('filter-year');
+            years.forEach(y => {
+                const opt = document.createElement('option');
+                opt.value = y;
+                opt.textContent = y;
+                yearFilter.appendChild(opt);
+            });
+
+            // Set up event listeners
+            document.getElementById('search-filename').addEventListener('input', renderTable);
+            document.getElementById('filter-unit').addEventListener('change', renderTable);
+            document.getElementById('filter-year').addEventListener('change', renderTable);
+
+            // Compute KPIs
+            updateKPIs();
+
+            // Initial render
+            renderTable();
+        }
+
+        function updateKPIs() {
+            const total = allFiles.length;
+            const cs = allFiles.filter(f => f.unidad === 'CS').length;
+            const maestros = allFiles.filter(f => f.unidad === 'MAESTROS').length;
+            const totalSizeKb = allFiles.reduce((sum, f) => sum + (f.tamano_kb || 0), 0);
+
+            document.getElementById('kpi-total-files').textContent = total.toLocaleString();
+            document.getElementById('kpi-cs-files').textContent = cs.toLocaleString();
+            document.getElementById('kpi-maestros-files').textContent = maestros.toLocaleString();
+
+            let sizeText = "0 KB";
+            if (totalSizeKb > 1024) {
+                sizeText = `${(totalSizeKb / 1024).toFixed(1)} MB`;
+            } else {
+                sizeText = `${totalSizeKb.toFixed(1)} KB`;
+            }
+            document.getElementById('kpi-total-size').textContent = sizeText;
+        }
+
+        function renderTable() {
+            const searchQuery = document.getElementById('search-filename').value.toLowerCase().trim();
+            const unitFilter = document.getElementById('filter-unit').value;
+            const yearFilter = document.getElementById('filter-year').value;
+            const tbody = document.getElementById('files-table-body');
+
+            const filtered = allFiles.filter(f => {
+                const matchSearch = !searchQuery || f.nombre.toLowerCase().includes(searchQuery) || f.mes.toLowerCase().includes(searchQuery);
+                const matchUnit = unitFilter === 'ALL' || f.unidad === unitFilter;
+                const matchYear = yearFilter === 'ALL' || f.anio == yearFilter;
+                return matchSearch && matchUnit && matchYear;
+            });
+
+            document.getElementById('table-row-count').textContent = `Mostrando ${filtered.length} de ${allFiles.length} archivos`;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center py-12 text-slate-500">
+                            No se encontraron archivos con los filtros seleccionados
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(f => {
+                const unitBadge = f.unidad === 'CS' 
+                    ? '<span class="badge badge-cs">CS (Servicios)</span>'
+                    : '<span class="badge badge-maestros">Maestros</span>';
+                
+                const sizeText = f.tamano_kb > 1024 
+                    ? `${(f.tamano_kb / 1024).toFixed(1)} MB` 
+                    : `${f.tamano_kb.toFixed(1)} KB`;
+
+                return `
+                    <tr class="hover:bg-slate-800/50 transition-colors">
+                        <td class="py-3 px-4">${unitBadge}</td>
+                        <td class="py-3 px-4 text-slate-300 font-semibold">${f.anio}</td>
+                        <td class="py-3 px-4 text-indigo-300 font-semibold">${f.mes}</td>
+                        <td class="py-3 px-4 text-white font-medium break-all max-w-xs md:max-w-md" title="${f.nombre}">${f.nombre}</td>
+                        <td class="py-3 px-4 text-slate-400">${sizeText}</td>
+                        <td class="py-3 px-4 text-slate-400 text-sm">${f.modificado}</td>
+                        <td class="py-3 px-4 text-center">
+                            <span class="badge badge-active flex items-center justify-center w-max mx-auto">
+                                <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                                Resguardado
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        document.addEventListener('DOMContentLoaded', initPage);
+    </script>
+</body>
+</html>
