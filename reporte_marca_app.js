@@ -151,11 +151,13 @@
         // 1. Selector Matriz
         const selMatriz = document.getElementById('matriz-filtro-marca');
         if (selMatriz) {
-            selMatriz.innerHTML = '<option value="ALL" selected>Todas las Marcas (General)</option>';
+            const currentVal = selMatriz.value || matrizMarca || 'ALL';
+            selMatriz.innerHTML = `<option value="ALL">Todas las Marcas (General - ${marcasOrdenadas.length} marcas)</option>`;
             marcasOrdenadas.forEach(m => {
                 const opt = document.createElement('option');
                 opt.value = m;
                 opt.textContent = m;
+                if (m === currentVal) opt.selected = true;
                 selMatriz.appendChild(opt);
             });
         }
@@ -163,18 +165,22 @@
         // 2. Selector Detalle
         const selDetalle = document.getElementById('filtro-marca');
         if (selDetalle) {
-            selDetalle.innerHTML = '<option value="ALL">Todas las Marcas (' + marcasOrdenadas.length + ' disponibles)</option>';
+            const currentVal = selDetalle.value || 'HISENSE';
+            selDetalle.innerHTML = `<option value="ALL">Todas las Marcas (${marcasOrdenadas.length} marcas)</option>`;
             marcasOrdenadas.forEach(m => {
                 const opt = document.createElement('option');
                 opt.value = m;
                 opt.textContent = m;
-                if (m === 'HISENSE') opt.selected = true; // Hisense por defecto en auditoría
+                if (m === currentVal) opt.selected = true;
                 selDetalle.appendChild(opt);
             });
         }
 
-        const label = document.getElementById('marca-count-label');
-        if (label) label.textContent = `${marcasOrdenadas.length} marcas registradas`;
+        const labelMatriz = document.getElementById('matriz-marca-count');
+        if (labelMatriz) labelMatriz.textContent = `${marcasOrdenadas.length} marcas`;
+
+        const labelDetalle = document.getElementById('marca-count-label');
+        if (labelDetalle) labelDetalle.textContent = `${marcasOrdenadas.length} marcas registradas`;
     }
 
     // =========================================================================
@@ -1030,6 +1036,29 @@
         XLSX.writeFile(wb, filename);
     };
 
-    // Inicializar al cargar DOM
-    document.addEventListener('DOMContentLoaded', init);
+    function startApp() {
+        if (window.REPORTES_DATA && window.REPORTES_DATA.length > 0) {
+            init();
+        } else {
+            console.log("Esperando REPORTES_DATA...");
+            let attempts = 0;
+            const timer = setInterval(() => {
+                attempts++;
+                if (window.REPORTES_DATA && window.REPORTES_DATA.length > 0) {
+                    clearInterval(timer);
+                    init();
+                } else if (attempts > 50) {
+                    clearInterval(timer);
+                    console.warn("Timeout esperando REPORTES_DATA");
+                    init();
+                }
+            }, 100);
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startApp);
+    } else {
+        startApp();
+    }
 })();
