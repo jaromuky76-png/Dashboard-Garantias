@@ -133,7 +133,7 @@ def read_xlsx_rows_smart(filepath, sheet_name):
                     row_list = [row_data.get(i, "") for i in range(max_idx + 1)]
                     
                     if not ot_headers:
-                        if any(v and (str(v).strip().upper() == 'MARCA' or 'TIPO DE GARANTIA' in str(v).upper() or 'ACTIVIDAD' in str(v).upper()) for v in row_list if v):
+                        if any(v and str(v).strip().upper() == 'MARCA' for v in row_list if v):
                             ot_headers = row_list
                             h = {str(v).strip().upper(): idx for idx, v in enumerate(ot_headers) if v}
                             for k, idx in h.items():

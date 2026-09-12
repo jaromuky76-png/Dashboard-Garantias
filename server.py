@@ -283,7 +283,7 @@ class DashboardServer(SimpleHTTPRequestHandler):
 
                     subprocess.run(
                         ["git", "add", "data.js", "servicio_data.js", "parts_data.js",
-                         "seguimiento_data.js", "api_cache.json"],
+                         "seguimiento_data.js", "reportes_data.js", "api_cache.json"],
                         cwd=BASE_DIR, check=False
                     )
                     status = subprocess.run(

@@ -13,3 +13,4 @@ temp_upload.xlsx
 # System
 .DS_Store
 Thumbs.db
+server.log

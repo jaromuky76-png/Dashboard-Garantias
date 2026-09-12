@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte de Garantías por Marca - OT</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: '#0f172a',
+                        card: '#1e293b',
+                        primary: '#3b82f6',
+                        secondary: '#8b5cf6',
+                        success: '#10b981',
+                        danger: '#ef4444',
+                        warning: '#f59e0b'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- SheetJS para exportación a Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Custom CSS -->
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        table {
+            border-collapse: separate;
+            border-spacing: 0;
+            width: 100%;
+        }
+        th, td {
+            padding: 0.85rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        th {
+            background-color: rgba(15, 23, 42, 0.75);
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            font-size: 0.72rem;
+            letter-spacing: 0.05em;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        tr:last-child td { border-bottom: none; }
+        .badge {
+            padding: 0.25rem 0.65rem;
+            border-radius: 9999px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        .badge-cs { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+        .badge-maestros { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+        .badge-has-case { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .badge-no-case { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    </style>
+</head>
+<body class="min-h-screen p-6">
+    <div class="max-w-7xl mx-auto space-y-6">
+        
+        <!-- Header -->
+        <header class="flex justify-between items-center glass-card p-6">
+            <div>
+                <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent">
+                    Dashboard Estado de OT
+                </h1>
+                <p class="text-slate-400 mt-1">Reporte Especializado de Casos de Garantía por Marca y Rango de Fechas</p>
+                <nav class="mt-4 flex gap-4">
+                    <a href="index.html" class="text-slate-400 hover:text-white transition-colors pb-2">Garantías</a>
+                    <a href="servicio.html" class="text-slate-400 hover:text-white transition-colors pb-2">Servicios</a>
+                    <a href="repuestos.html" class="text-slate-400 hover:text-white transition-colors pb-2">Sugerido de Compras</a>
+                    <a href="seguimiento.html" class="text-slate-400 hover:text-white transition-colors pb-2">Seguimiento Trámites</a>
+                    <a href="reporte_marca.html" class="text-primary font-semibold border-b-2 border-primary pb-2">Reporte Marcas</a>
+                    <a href="archivos.html" class="text-slate-400 hover:text-white transition-colors pb-2">Archivos Resguardados</a>
+                </nav>
+            </div>
+            <div class="text-right">
+                <span class="text-xs text-slate-400 block uppercase tracking-wider font-semibold">Total en Base de Datos</span>
+                <span id="header-total-registros" class="text-2xl font-bold text-white tracking-tight">--</span>
+                <span class="text-xs text-slate-500 block">Casos Consolidados CS + Maestros</span>
+            </div>
+        </header>
+
+        <!-- Filtros -->
+        <div class="glass-card p-6 space-y-4">
+            <!-- Fila 1: Marca, Unidad, Buscador -->
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                <div class="md:col-span-4">
+                    <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider flex items-center justify-between">
+                        <span>Marca a Consultar</span>
+                        <span id="marca-count-label" class="text-[10px] text-blue-400 font-normal">--</span>
+                    </label>
+                    <select id="filtro-marca" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-primary transition-colors text-white font-medium">
+                        <option value="ALL">Todas las Marcas</option>
+                        <!-- Opciones generadas por JS -->
+                    </select>
+                </div>
+                <div class="md:col-span-3">
+                    <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Unidad de Negocio</label>
+                    <select id="filtro-unidad" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-primary transition-colors text-white">
+                        <option value="ALL">Todas las Unidades (CS + Maestros)</option>
+                        <option value="CS">Centro de Servicios (CS)</option>
+                        <option value="MAESTROS">Maestros</option>
+                    </select>
+                </div>
+                <div class="md:col-span-5">
+                    <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Buscador Rápido</label>
+                    <div class="relative">
+                        <input type="text" id="buscador-general" placeholder="Buscar por No. OT, Cliente, No. Caso Marca, Modelo, Serie..." class="w-full bg-slate-800 border border-slate-700 rounded-lg pl-10 pr-4 py-2.5 focus:outline-none focus:border-primary transition-colors text-white">
+                        <svg class="w-5 h-5 text-slate-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fila 2: Rango de Período y Botón Exportar -->
+            <div class="pt-2 border-t border-slate-700/50 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex flex-wrap items-center gap-3">
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Rango Período:</span>
+                    
+                    <!-- Desde -->
+                    <div class="flex items-center gap-1.5 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700">
+                        <span class="text-xs text-slate-400 font-medium">Desde:</span>
+                        <select id="filtro-desde-mes" class="bg-transparent text-xs text-white focus:outline-none font-semibold cursor-pointer">
+                            <option value="1">ENERO</option>
+                            <option value="2">FEBRERO</option>
+                            <option value="3">MARZO</option>
+                            <option value="4">ABRIL</option>
+                            <option value="5">MAYO</option>
+                            <option value="6">JUNIO</option>
+                            <option value="7">JULIO</option>
+                            <option value="8">AGOSTO</option>
+                            <option value="9">SEPTIEMBRE</option>
+                            <option value="10">OCTUBRE</option>
+                            <option value="11">NOVIEMBRE</option>
+                            <option value="12">DICIEMBRE</option>
+                        </select>
+                        <select id="filtro-desde-anio" class="bg-transparent text-xs text-white focus:outline-none font-semibold cursor-pointer">
+                            <option value="2026">2026</option>
+                            <option value="2025">2025</option>
+                        </select>
+                    </div>
+
+                    <!-- Hasta -->
+                    <div class="flex items-center gap-1.5 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700">
+                        <span class="text-xs text-slate-400 font-medium">Hasta:</span>
+                        <select id="filtro-hasta-mes" class="bg-transparent text-xs text-white focus:outline-none font-semibold cursor-pointer">
+                            <option value="1">ENERO</option>
+                            <option value="2">FEBRERO</option>
+                            <option value="3">MARZO</option>
+                            <option value="4">ABRIL</option>
+                            <option value="5">MAYO</option>
+                            <option value="6">JUNIO</option>
+                            <option value="7">JULIO</option>
+                            <option value="8" selected>AGOSTO</option>
+                            <option value="9">SEPTIEMBRE</option>
+                            <option value="10">OCTUBRE</option>
+                            <option value="11">NOVIEMBRE</option>
+                            <option value="12">DICIEMBRE</option>
+                        </select>
+                        <select id="filtro-hasta-anio" class="bg-transparent text-xs text-white focus:outline-none font-semibold cursor-pointer">
+                            <option value="2026" selected>2026</option>
+                            <option value="2025">2025</option>
+                        </select>
+                    </div>
+
+                    <!-- Accesos Rápidos -->
+                    <div class="flex items-center gap-1 text-xs">
+                        <button onclick="setRangoRapido(2026, 1, 2026, 8)" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-blue-400 hover:text-blue-300 transition-colors border border-slate-700">Ene - Ago 2026</button>
+                        <button onclick="setRangoRapido(2026, 1, 2026, 12)" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors border border-slate-700">Año 2026</button>
+                        <button onclick="setRangoRapido(2025, 1, 2025, 12)" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors border border-slate-700">Año 2025</button>
+                        <button onclick="setRangoRapido(2025, 1, 2026, 12)" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors border border-slate-700">Todo</button>
+                    </div>
+                </div>
+
+                <!-- Botón Exportar Excel -->
+                <div>
+                    <button onclick="exportarExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-lg transition-colors font-semibold flex items-center gap-2 shadow-lg shadow-emerald-900/30">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <span>Exportar Reporte a Excel</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tarjetas KPI -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="glass-card p-5 border-l-4 border-primary">
+                <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Casos de la Marca</div>
+                <div id="kpi-total" class="text-3xl font-bold text-white mt-1">0</div>
+                <div id="kpi-periodo-desc" class="text-xs text-slate-400 mt-1">En período seleccionado</div>
+            </div>
+            <div class="glass-card p-5 border-l-4 border-blue-500">
+                <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Centro de Servicios (CS)</div>
+                <div id="kpi-cs" class="text-3xl font-bold text-blue-400 mt-1">0</div>
+                <div id="kpi-cs-pct" class="text-xs text-slate-400 mt-1">0% del total</div>
+            </div>
+            <div class="glass-card p-5 border-l-4 border-purple-500">
+                <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Maestros</div>
+                <div id="kpi-maestros" class="text-3xl font-bold text-purple-400 mt-1">0</div>
+                <div id="kpi-maestros-pct" class="text-xs text-slate-400 mt-1">0% del total</div>
+            </div>
+            <div class="glass-card p-5 border-l-4 border-emerald-500">
+                <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Con No. Orden de Marca</div>
+                <div id="kpi-con-caso" class="text-3xl font-bold text-emerald-400 mt-1">0</div>
+                <div id="kpi-con-caso-pct" class="text-xs text-slate-400 mt-1">0 con código registrado</div>
+            </div>
+        </div>
+
+        <!-- Tabla de Datos -->
+        <div class="glass-card overflow-hidden">
+            <!-- Barra superior de la tabla -->
+            <div class="p-4 bg-slate-900/40 border-b border-slate-700/50 flex flex-wrap items-center justify-between gap-4">
+                <div class="text-sm font-semibold text-slate-300">
+                    Mostrando <span id="table-showing-start" class="text-white">0</span> - <span id="table-showing-end" class="text-white">0</span> de <span id="table-showing-total" class="text-white">0</span> registros
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="text-xs text-slate-400">Filas por página:</span>
+                    <select id="paginacion-tamano" onchange="cambiarTamanoPagina(this.value)" class="bg-slate-800 border border-slate-700 rounded px-2.5 py-1 text-xs text-white focus:outline-none">
+                        <option value="25" selected>25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="99999">Todos</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Contenedor scrollable de la tabla -->
+            <div class="overflow-x-auto max-h-[620px]">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr>
+                            <th class="w-20">Unidad</th>
+                            <th class="w-24">No. OT</th>
+                            <th class="w-36">No. Orden Marca</th>
+                            <th class="w-32">Fecha Ingreso</th>
+                            <th class="w-56">Cliente</th>
+                            <th>Descripción del Producto</th>
+                            <th class="w-36">Modelo / RMS</th>
+                            <th class="w-36">Serie del Equipo</th>
+                            <th class="w-32">Tipo Garantía</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-cuerpo">
+                        <!-- Generado por JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginador inferior -->
+            <div class="p-4 bg-slate-900/40 border-t border-slate-700/50 flex items-center justify-between">
+                <div id="paginador-info" class="text-xs text-slate-400">
+                    Página 1 de 1
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="btn-pag-prev" onclick="cambiarPagina(-1)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-xs font-medium">Anterior</button>
+                    <button id="btn-pag-next" onclick="cambiarPagina(1)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-xs font-medium">Siguiente</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Scripts dinámicos con cache-buster -->
+    <script>
+        (function() {
+            var v = new Date().getTime();
+            var scripts = ['reportes_data.js', 'reporte_marca_app.js'];
+            scripts.forEach(function(src) {
+                var s = document.createElement('script');
+                s.src = src + '?v=' + v;
+                s.async = false;
+                document.body.appendChild(s);
+            });
+        })();
+    </script>
+</body>
+</html>

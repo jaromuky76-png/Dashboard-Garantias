@@ -32,6 +32,7 @@ output_js  = os.path.join(BASE_DIR, "data.js")
 output_svc = os.path.join(BASE_DIR, "servicio_data.js")
 output_pts = os.path.join(BASE_DIR, "parts_data.js")
 output_seg = os.path.join(BASE_DIR, "seguimiento_data.js")
+output_rep = os.path.join(BASE_DIR, "reportes_data.js")
 
 def load_cache():
     if os.path.exists(CACHE_PATH):
@@ -202,13 +203,15 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
     servicio_data = load_existing_json(output_svc, 'PRELOADED_SERVICIO')
     parts_data = load_existing_json(output_pts, 'partsData')
     seguimiento_data = load_existing_json(output_seg, 'PRELOADED_SEGUIMIENTO')
+    reportes_data = load_existing_json(output_rep, 'REPORTES_DATA')
     
     # Remover registros viejos (excepto para seguimiento, que mantiene el historial)
     garantia_data = remove_existing_period(garantia_data, unidad, anio, mes)
     servicio_data = remove_existing_period(servicio_data, unidad, anio, mes)
     parts_data = remove_existing_period(parts_data, unidad, anio, mes)
+    reportes_data = remove_existing_period(reportes_data, unidad, anio, mes)
     
-    cnt_g, cnt_s, cnt_p, cnt_seg = 0, 0, 0, 0
+    cnt_g, cnt_s, cnt_p, cnt_seg, cnt_rep = 0, 0, 0, 0, 0
     existing_seg = {f"{x.get('unidad_negocio', '')}-{x.get('ot', '')}" for x in seguimiento_data}
     
     try:
@@ -243,6 +246,17 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
                 boleta_rnn_i = next((idx for k, idx in h.items() if "BOLETA/RNN" in k or "BOLETA" in k or "RNN" in k), 26)
                 actividad_i = next((idx for k, idx in h.items() if "ACTIVIDAD" in k), 9)
                 externo_rnn_i = next((idx for k, idx in h.items() if "EXTERNO/RNN" in k or "EXTERNO" in k), 3)
+
+                # Indices específicos para reportes de marca
+                cli_i = h.get('CLIENTE', -1)
+                mod_i = h.get('MODELO', -1)
+                ser_i = next((idx for k, idx in h.items() if "SERIE" in k), -1)
+                mod_e_i = h.get('MODELO EVARPORADOR', h.get('MODELO EVAPORADOR', -1))
+                mod_c_i = h.get('MODELO DEL CONDENSADOR', h.get('MODELO CONDENSADOR', -1))
+                ser_e_i = h.get('SERIE EVAPORADOR', -1)
+                ser_c_i = h.get('SERIE CONDENSADOR', -1)
+                desc_e_i = h.get('DESCRIPCION DEL EVAPORADOR', -1)
+                desc_c_i = h.get('DESCRIPCION DEL CONDENSADOR', -1)
 
                 seg_map = {f"{x.get('unidad_negocio', '')}-{x.get('ot', '')}": x for x in seguimiento_data}
                 continue
@@ -398,6 +412,56 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
                                             "unidad_negocio": unidad.upper()
                                         })
                                         cnt_p += 1
+                        
+                    # ----------------- REPORTE DE GARANTIAS POR MARCA -----------------
+                    cli = safe_str(row[cli_i] if cli_i >= 0 and cli_i < len(row) else '')
+                    if unidad.upper() == 'CS':
+                        mod = safe_str(row[mod_i] if mod_i >= 0 and mod_i < len(row) else '')
+                        ser = safe_str(row[ser_i] if ser_i >= 0 and ser_i < len(row) else '')
+                        modelo_rep = mod if mod else rms
+                        desc_rep = desc
+                    else:
+                        mod_e = safe_str(row[mod_e_i] if mod_e_i >= 0 and mod_e_i < len(row) else '')
+                        mod_c = safe_str(row[mod_c_i] if mod_c_i >= 0 and mod_c_i < len(row) else '')
+                        ser_e = safe_str(row[ser_e_i] if ser_e_i >= 0 and ser_e_i < len(row) else '')
+                        ser_c = safe_str(row[ser_c_i] if ser_c_i >= 0 and ser_c_i < len(row) else '')
+                        desc_e = safe_str(row[desc_e_i] if desc_e_i >= 0 and desc_e_i < len(row) else '')
+                        desc_c = safe_str(row[desc_c_i] if desc_c_i >= 0 and desc_c_i < len(row) else '')
+                        desc_list = [d for d in (desc_e, desc_c) if d and d not in ('--', '0')]
+                        desc_rep = " / ".join(desc_list) if desc_list else (desc or actividad_val)
+                        mod_list = [m for m in (mod_e, mod_c) if m and m not in ('--', '0')]
+                        modelo_rep = " / ".join(mod_list) if mod_list else rms
+                        ser_list = [s for s in (ser_e, ser_c) if s and s not in ('--', '0')]
+                        ser = " / ".join(ser_list)
+
+                    is_claim_rep = False
+                    if unidad.upper() == 'CS':
+                        if "DENTRO" in validador_garantia_val or "GARANTIA" in tipo or (no_caso and no_caso not in ("Falta trámite en portal", "DOMICILIO", "N/A", "--")):
+                            is_claim_rep = True
+                    else:
+                        if "RECLAMO" in actividad_val or "GARANTIA" in tipo or (no_caso and no_caso not in ("Falta trámite en portal", "DOMICILIO", "N/A", "--")):
+                            is_claim_rep = True
+
+                    if is_claim_rep and ot_n and marca and marca != "DESCONOCIDA":
+                        reportes_data.append({
+                            "unidad": unidad.upper(),
+                            "ot": ot_n,
+                            "marca": marca,
+                            "no_caso_marca": no_caso if no_caso != "Falta trámite en portal" else "",
+                            "cliente": cli,
+                            "descripcion": desc_rep,
+                            "modelo": modelo_rep,
+                            "rms": rms,
+                            "serie": ser,
+                            "fecha": fecha,
+                            "anio": int(anio),
+                            "mes": mes,
+                            "mesNum": int(mes_num),
+                            "tipo_garantia": tipo if tipo else (validador_garantia_val if unidad.upper() == 'CS' else actividad_val),
+                            "link": link
+                        })
+                        cnt_rep += 1
+
                 except Exception as row_ex:
                     print(f"Error procesando fila {row[:4] if row else 'vacia'}: {row_ex}")
     except Exception as e:
@@ -413,8 +477,9 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
     save_json(output_svc, 'PRELOADED_SERVICIO', servicio_data, "Servicios", "PRELOADED_META_SVC", file_reg)
     save_json(output_pts, 'partsData', parts_data, "Repuestos", "PARTS_META", file_reg)
     save_json(output_seg, 'PRELOADED_SEGUIMIENTO', seguimiento_data, "Seguimiento", "SEGUIMIENTO_META", file_reg)
+    save_json(output_rep, 'REPORTES_DATA', reportes_data, "Reportes Marcas", "REPORTES_META", file_reg)
     
-    print(f"Finalizado: {cnt_g} garantias, {cnt_s} servicios, {cnt_p} repuestos, {cnt_seg} nuevos seguimientos agregados.")
+    print(f"Finalizado: {cnt_g} garantias, {cnt_s} servicios, {cnt_p} repuestos, {cnt_seg} nuevos seguimientos, {cnt_rep} reportes agregados.")
     return True
 
 if __name__ == "__main__":
@@ -427,9 +492,11 @@ if __name__ == "__main__":
     servicio_data = load_existing_json(output_svc, 'PRELOADED_SERVICIO')
     parts_data = load_existing_json(output_pts, 'partsData')
     seguimiento_data = load_existing_json(output_seg, 'PRELOADED_SEGUIMIENTO')
+    reportes_data = load_existing_json(output_rep, 'REPORTES_DATA')
     
     save_json(output_js, 'PRELOADED_DATA', garantia_data, "Garantias", "PRELOADED_META", reg)
     save_json(output_svc, 'PRELOADED_SERVICIO', servicio_data, "Servicios", "PRELOADED_META_SVC", reg)
     save_json(output_pts, 'partsData', parts_data, "Repuestos", "PARTS_META", reg)
     save_json(output_seg, 'PRELOADED_SEGUIMIENTO', seguimiento_data, "Seguimiento", "SEGUIMIENTO_META", reg)
+    save_json(output_rep, 'REPORTES_DATA', reportes_data, "Reportes Marcas", "REPORTES_META", reg)
     print("Preloaded files metadata populated in all JS files.")
