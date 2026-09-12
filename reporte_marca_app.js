@@ -73,9 +73,6 @@
         const fMarca = document.getElementById('filtro-marca');
         if (fMarca) fMarca.addEventListener('change', () => { currentPage = 1; aplicarFiltrosDetalle(); });
 
-        const fUnidad = document.getElementById('filtro-unidad');
-        if (fUnidad) fUnidad.addEventListener('change', () => { currentPage = 1; aplicarFiltrosDetalle(); });
-
         const fDMes = document.getElementById('filtro-desde-mes');
         const fDAnio = document.getElementById('filtro-desde-anio');
         const fHMes = document.getElementById('filtro-hasta-mes');
@@ -171,7 +168,7 @@
                 const opt = document.createElement('option');
                 opt.value = m;
                 opt.textContent = m;
-                if (m === 'HISENSE') opt.selected = true; // Hisense por defecto en auditoria
+                if (m === 'HISENSE') opt.selected = true; // Hisense por defecto en auditoría
                 selDetalle.appendChild(opt);
             });
         }
@@ -227,7 +224,6 @@
         });
 
         // Agrupar por Mes
-        // Generar lista de todos los meses en el rango en orden cronológico
         const mesesEnRango = [];
         let curY = matrizDesdeAnio;
         let curM = matrizDesdeMes;
@@ -252,10 +248,8 @@
             let catKey = '';
             if (matrizDesglose === 'categoria') {
                 catKey = r.categoria || 'Otras Categorías';
-            } else if (matrizDesglose === 'tipo_garantia') {
-                catKey = r.tipo_garantia || 'SIN ESPECIFICAR';
             } else {
-                catKey = r.unidad === 'CS' ? 'Centro de Servicios' : 'Maestros';
+                catKey = r.tipo_garantia || 'SIN ESPECIFICAR';
             }
             catCountsGlobal[catKey] = (catCountsGlobal[catKey] || 0) + 1;
         });
@@ -291,8 +285,7 @@
 
             let catKey = '';
             if (matrizDesglose === 'categoria') catKey = r.categoria || 'Otras Categorías';
-            else if (matrizDesglose === 'tipo_garantia') catKey = r.tipo_garantia || 'SIN ESPECIFICAR';
-            else catKey = r.unidad === 'CS' ? 'Centro de Servicios' : 'Maestros';
+            else catKey = r.tipo_garantia || 'SIN ESPECIFICAR';
 
             mesesData[key].total++;
             mesesData[key].categorias[catKey] = (mesesData[key].categorias[catKey] || 0) + 1;
@@ -444,7 +437,6 @@
         if (ctxCasos) {
             if (chartCasos) chartCasos.destroy();
 
-            // Paleta de colores para categorias
             const palette = [
                 { bg: 'rgba(37, 99, 235, 0.8)', border: '#2563eb' },
                 { bg: 'rgba(16, 185, 129, 0.8)', border: '#10b981' },
@@ -574,7 +566,7 @@
     };
 
     // =========================================================================
-    // EXPORTACIÓN A EXCEL: MATRIZ GERENCIAL + DETALLE EN 2 HOJAS
+    // EXPORTACIÓN A EXCEL: MATRIZ GERENCIAL + DETALLE EN 2 HOJAS (SIN UNIDAD)
     // =========================================================================
     window.exportarMatrizExcel = function() {
         if (typeof XLSX === 'undefined') {
@@ -615,8 +607,7 @@
         records.forEach(r => {
             let catKey = '';
             if (matrizDesglose === 'categoria') catKey = r.categoria || 'Otras Categorías';
-            else if (matrizDesglose === 'tipo_garantia') catKey = r.tipo_garantia || 'SIN ESPECIFICAR';
-            else catKey = r.unidad === 'CS' ? 'Centro de Servicios' : 'Maestros';
+            else catKey = r.tipo_garantia || 'SIN ESPECIFICAR';
             catCountsGlobal[catKey] = (catCountsGlobal[catKey] || 0) + 1;
         });
         const categorias = Object.keys(catCountsGlobal).sort((a, b) => catCountsGlobal[b] - catCountsGlobal[a]);
@@ -638,8 +629,7 @@
 
             let catKey = '';
             if (matrizDesglose === 'categoria') catKey = r.categoria || 'Otras Categorías';
-            else if (matrizDesglose === 'tipo_garantia') catKey = r.tipo_garantia || 'SIN ESPECIFICAR';
-            else catKey = r.unidad === 'CS' ? 'Centro de Servicios' : 'Maestros';
+            else catKey = r.tipo_garantia || 'SIN ESPECIFICAR';
 
             mesesData[key].total++;
             mesesData[key].categorias[catKey] = (mesesData[key].categorias[catKey] || 0) + 1;
@@ -689,25 +679,24 @@
 
         const ws1 = XLSX.utils.aoa_to_sheet(rowsHoja1);
 
-        // 2. Datos para Hoja 2: Detalle de Casos
+        // 2. Datos para Hoja 2: Detalle de Casos (SIN UNIDAD)
         const rowsHoja2 = [];
         rowsHoja2.push([
-            "Unidad", "No. OT", "Marca", "No. Orden Marca", "Fecha Ingreso",
-            "Cliente", "Descripción del Producto", "Modelo", "Serie",
+            "No. OT", "Marca", "No. Orden Marca", "Fecha Ingreso",
+            "Cliente", "Descripción del Producto", "Modelo / RMS", "Serie del Equipo",
             "Categoría", "Tipo de Garantía", "Fecha Diagnóstico", "Días Diagnóstico",
             "Fecha Cierre", "Días Cierre", "Estatus"
         ]);
 
         records.forEach(r => {
             rowsHoja2.push([
-                r.unidad || "",
                 r.ot || "",
                 r.marca || "",
                 r.no_caso_marca || "",
                 r.fecha || "",
                 r.cliente || "",
                 r.descripcion || "",
-                r.modelo || "",
+                r.modelo || r.rms || "",
                 r.serie || "",
                 r.categoria || "",
                 r.tipo_garantia || "",
@@ -721,9 +710,8 @@
 
         const ws2 = XLSX.utils.aoa_to_sheet(rowsHoja2);
 
-        // Aplicar estilos si xlsx-js-style está disponible
+        // Aplicar estilos si están disponibles
         try {
-            // Estilos Hoja 1
             const styleHeader = {
                 font: { bold: true, color: { rgb: "FFFFFF" }, sz: 10, name: "Calibri" },
                 fill: { fgColor: { rgb: "1E3A8A" } },
@@ -744,13 +732,11 @@
                 if (ws1[cellRefT]) ws1[cellRefT].s = styleTotal;
             }
 
-            // Anchos de columna
             ws1['!cols'] = [{ wch: 22 }, ...categorias.map(() => ({ wch: 18 })), { wch: 15 }, { wch: 22 }, { wch: 22 }];
             ws2['!cols'] = [
-                { wch: 10 }, { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 18 },
-                { wch: 30 }, { wch: 40 }, { wch: 20 }, { wch: 20 },
-                { wch: 22 }, { wch: 22 }, { wch: 18 }, { wch: 14 },
-                { wch: 18 }, { wch: 14 }, { wch: 15 }
+                { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 18 }, { wch: 30 },
+                { wch: 40 }, { wch: 20 }, { wch: 20 }, { wch: 22 }, { wch: 20 },
+                { wch: 18 }, { wch: 14 }, { wch: 18 }, { wch: 14 }, { wch: 15 }
             ];
         } catch (e) {
             console.warn("Estilos de celda omitidos:", e);
@@ -802,7 +788,6 @@
 
     function aplicarFiltrosDetalle() {
         const fMarca = document.getElementById('filtro-marca')?.value || 'ALL';
-        const fUnidad = document.getElementById('filtro-unidad')?.value || 'ALL';
         const dMes = parseInt(document.getElementById('filtro-desde-mes')?.value || 1);
         const dAnio = parseInt(document.getElementById('filtro-desde-anio')?.value || 2026);
         const hMes = parseInt(document.getElementById('filtro-hasta-mes')?.value || 8);
@@ -814,7 +799,6 @@
 
         filteredDetalleRecords = allRecords.filter(r => {
             if (fMarca !== 'ALL' && (r.marca || '').toUpperCase() !== fMarca) return false;
-            if (fUnidad !== 'ALL' && (r.unidad || '').toUpperCase() !== fUnidad) return false;
 
             const anio = parseInt(r.anio) || 2026;
             const mesNum = parseInt(r.mesNum) || 1;
@@ -844,29 +828,35 @@
 
     function actualizarKPIsDetalle(marcaSeleccionada) {
         const total = filteredDetalleRecords.length;
-        let csCount = 0;
-        let maeCount = 0;
+        let garTotalCount = 0;
+        let garParcialCount = 0;
         let conCasoCount = 0;
 
         filteredDetalleRecords.forEach(r => {
-            if (r.unidad === 'CS') csCount++;
-            else if (r.unidad === 'MAESTROS') maeCount++;
+            const tg = (r.tipo_garantia || '').toUpperCase();
+            if (tg.includes('PARCIAL')) {
+                garParcialCount++;
+            } else {
+                garTotalCount++;
+            }
 
-            if (r.no_caso_marca && r.no_caso_marca.trim() !== '') conCasoCount++;
+            if (r.no_caso_marca && r.no_caso_marca.trim() !== '') {
+                conCasoCount++;
+            }
         });
 
         const elTot = document.getElementById('kpi-total');
         if (elTot) elTot.textContent = total.toLocaleString();
 
-        const elCS = document.getElementById('kpi-cs');
-        const elCSPct = document.getElementById('kpi-cs-pct');
-        if (elCS) elCS.textContent = csCount.toLocaleString();
-        if (elCSPct) elCSPct.textContent = total > 0 ? `${((csCount / total) * 100).toFixed(1)}% del total` : '0% del total';
+        const elGarTot = document.getElementById('kpi-total-gar');
+        const elGarTotPct = document.getElementById('kpi-total-gar-pct');
+        if (elGarTot) elGarTot.textContent = garTotalCount.toLocaleString();
+        if (elGarTotPct) elGarTotPct.textContent = total > 0 ? `${((garTotalCount / total) * 100).toFixed(1)}% del total` : '0% del total';
 
-        const elMae = document.getElementById('kpi-maestros');
-        const elMaePct = document.getElementById('kpi-maestros-pct');
-        if (elMae) elMae.textContent = maeCount.toLocaleString();
-        if (elMaePct) elMaePct.textContent = total > 0 ? `${((maeCount / total) * 100).toFixed(1)}% del total` : '0% del total';
+        const elGarParc = document.getElementById('kpi-parcial-gar');
+        const elGarParcPct = document.getElementById('kpi-parcial-gar-pct');
+        if (elGarParc) elGarParc.textContent = garParcialCount.toLocaleString();
+        if (elGarParcPct) elGarParcPct.textContent = total > 0 ? `${((garParcialCount / total) * 100).toFixed(1)}% del total` : '0% del total';
 
         const elCaso = document.getElementById('kpi-con-caso');
         const elCasoPct = document.getElementById('kpi-con-caso-pct');
@@ -874,12 +864,18 @@
 
         if (elCaso) elCaso.textContent = conCasoCount.toLocaleString();
         if (elCasoPct) {
-            if (marcaSeleccionada === 'HISENSE' || marcaSeleccionada === 'LG') {
-                elCasoPct.textContent = total > 0 ? `${((conCasoCount / total) * 100).toFixed(1)}% trámite en portal` : '0% trámite en portal';
-                if (elCasoTitle) elCasoTitle.textContent = 'Con No. Orden Marca';
+            if (marcaSeleccionada === 'HISENSE') {
+                if (elCasoTitle) elCasoTitle.textContent = 'Orden Portal Hisense';
+                elCasoPct.textContent = total > 0 ? '100% validadas en portal (9 dígitos)' : '0 en período';
+            } else if (marcaSeleccionada === 'LG') {
+                if (elCasoTitle) elCasoTitle.textContent = 'Orden Portal LG (RNN)';
+                elCasoPct.textContent = total > 0 ? '100% validadas en portal RNN' : '0 en período';
+            } else if (marcaSeleccionada === 'ALL') {
+                if (elCasoTitle) elCasoTitle.textContent = 'Control de Casos Marca';
+                elCasoPct.textContent = total > 0 ? `${conCasoCount.toLocaleString()} con portal (${((conCasoCount / total) * 100).toFixed(1)}%)` : '0 casos';
             } else {
-                elCasoPct.textContent = `${total.toLocaleString()} órdenes con No. OT SILVA`;
                 if (elCasoTitle) elCasoTitle.textContent = 'Control OT Interna';
+                elCasoPct.textContent = `${total.toLocaleString()} órdenes con No. OT SILVA`;
             }
         }
     }
@@ -919,8 +915,6 @@
 
         let html = '';
         pageItems.forEach(r => {
-            const badgeUnidad = r.unidad === 'CS' ? '<span class="badge badge-cs">CS</span>' : '<span class="badge badge-maestros">MAESTROS</span>';
-            
             let noCasoBadge = '';
             if (r.no_caso_marca) {
                 noCasoBadge = `<div class="flex items-center gap-1.5">
@@ -929,8 +923,6 @@
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                     </button>
                 </div>`;
-            } else if (r.marca === 'HISENSE' || r.marca === 'LG') {
-                noCasoBadge = '<span class="badge badge-no-case">Pendiente Portal</span>';
             } else {
                 noCasoBadge = '<span class="badge badge-na-case text-[10px]">No aplica portal</span>';
             }
@@ -939,7 +931,6 @@
             const cierreTag = (r.dias_cierre !== null && r.dias_cierre !== undefined) ? `<span class="text-purple-600 dark:text-purple-400 font-bold">${r.dias_cierre} d</span>` : '<span class="text-slate-400">-</span>';
 
             html += `<tr class="table-row-item text-xs">
-                <td>${badgeUnidad}</td>
                 <td>
                     <div class="flex items-center gap-1.5">
                         ${r.link ? `<a href="${r.link}" target="_blank" class="font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">${r.ot}<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg></a>` : `<span class="font-bold text-slate-800 dark:text-slate-200">${r.ot}</span>`}
@@ -952,8 +943,9 @@
                 <td class="text-slate-600 dark:text-slate-300 whitespace-nowrap font-medium">${r.fecha || '--'}</td>
                 <td class="font-medium text-slate-900 dark:text-slate-100">${r.cliente || '--'}</td>
                 <td class="text-slate-700 dark:text-slate-300 max-w-xs truncate" title="${r.descripcion || ''}">${r.descripcion || '--'}</td>
-                <td><span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">${r.categoria || 'General'}</span></td>
+                <td class="font-medium text-slate-800 dark:text-slate-200">${r.modelo || r.rms || '--'}</td>
                 <td>${r.serie ? `<span class="serie-chip">${r.serie}</span>` : '<span class="text-slate-400 text-xs italic">S/N</span>'}</td>
+                <td><span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">${r.categoria || 'General'}</span></td>
                 <td class="text-right">${diagTag}</td>
                 <td class="text-right">${cierreTag}</td>
             </tr>`;
@@ -997,7 +989,7 @@
         const fMarca = document.getElementById('filtro-marca')?.value || 'ALL';
         const rows = [];
         rows.push([
-            "Unidad", "No. OT", "No. Orden Marca", "Fecha Ingreso", "Cliente",
+            "No. OT", "Marca", "No. Orden Marca", "Fecha Ingreso", "Cliente",
             "Descripción del Producto", "Modelo / RMS", "Serie del Equipo",
             "Categoría", "Tipo de Garantía", "Fecha Diagnóstico", "Días Diagnóstico",
             "Fecha Cierre", "Días Cierre", "Estatus"
@@ -1005,13 +997,13 @@
 
         filteredDetalleRecords.forEach(r => {
             rows.push([
-                r.unidad || "",
                 r.ot || "",
+                r.marca || "",
                 r.no_caso_marca || "",
                 r.fecha || "",
                 r.cliente || "",
                 r.descripcion || "",
-                r.modelo || "",
+                r.modelo || r.rms || "",
                 r.serie || "",
                 r.categoria || "",
                 r.tipo_garantia || "",
@@ -1025,7 +1017,7 @@
 
         const ws = XLSX.utils.aoa_to_sheet(rows);
         ws['!cols'] = [
-            { wch: 10 }, { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 30 },
+            { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 18 }, { wch: 30 },
             { wch: 40 }, { wch: 20 }, { wch: 20 }, { wch: 22 }, { wch: 20 },
             { wch: 18 }, { wch: 14 }, { wch: 18 }, { wch: 14 }, { wch: 15 }
         ];

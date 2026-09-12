@@ -467,6 +467,45 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
                         ser_list = [s for s in (ser_e, ser_c) if s and s not in ('--', '0')]
                         ser = " / ".join(ser_list)
 
+                    # REGLA 1: Excluir servicios (solo garantías)
+                    if "SERVICIO" in tipo and "GARANTIA" not in tipo:
+                        continue
+                    if any(x in actividad_val for x in ["INSTALACION", "VISITA FUTURA INST", "MANTENIMIENTO", "DESINSTALACION"]):
+                        continue
+                    if tipo in ["ARMADO Y PRUEBA", "TRASFERENCIA VIA SISTEMA", "MANTO POSTVENTA"]:
+                        continue
+
+                    is_warranty = False
+                    if unidad.upper() == 'CS':
+                        if "GARANTIA" in tipo or "DENTRO" in validador_garantia_val or tipo in ["TRABAJANDO CORRECTAMENTE", "ACTIVO", "INV TIENDA"]:
+                            is_warranty = True
+                    else:
+                        if "RECLAMO" in actividad_val or "GARANTIA" in tipo or "ASUME TIENDA" in tipo:
+                            is_warranty = True
+
+                    if not is_warranty:
+                        continue
+
+                    # REGLA 2: Hisense y LG requieren número de orden de portal
+                    if "HISENSE" in marca:
+                        m9 = re.search(r'\b(2\d{8})\b', boleta_val)
+                        if not m9:
+                            row_s = " ".join(str(c) for c in row if c is not None)
+                            m9 = re.search(r'\b(2\d{8})\b', row_s)
+                        if m9:
+                            no_caso = m9.group(1)
+                        else:
+                            continue
+                    elif "LG" in marca:
+                        mrnn = re.search(r'RNN\d{12}', boleta_val, re.IGNORECASE)
+                        if not mrnn:
+                            row_s = " ".join(str(c) for c in row if c is not None)
+                            mrnn = re.search(r'RNN\d{12}', row_s, re.IGNORECASE)
+                        if mrnn:
+                            no_caso = mrnn.group(0).upper()
+                        else:
+                            continue
+
                     # Categoría y Tiempos de Respuesta
                     categoria = classify_category(desc_rep, marca, actividad_val)
                     estatus_val = safe_str(row[estatus_i] if estatus_i >= 0 and estatus_i < len(row) else None).upper()
@@ -493,10 +532,9 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
 
                     if ot_n and marca and marca != "DESCONOCIDA":
                         reportes_data.append({
-                            "unidad": unidad.upper(),
                             "ot": ot_n,
                             "marca": marca,
-                            "no_caso_marca": no_caso if no_caso != "Falta trámite en portal" else "",
+                            "no_caso_marca": no_caso,
                             "cliente": cli,
                             "descripcion": desc_rep,
                             "modelo": modelo_rep,

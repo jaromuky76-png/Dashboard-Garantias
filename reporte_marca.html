@@ -67,9 +67,6 @@
             --badge-cs-bg: #eff6ff;
             --badge-cs-text: #1d4ed8;
             --badge-cs-border: #bfdbfe;
-            --badge-mae-bg: #faf5ff;
-            --badge-mae-text: #7e22ce;
-            --badge-mae-border: #e9d5ff;
             --badge-case-bg: #ecfdf5;
             --badge-case-text: #047857;
             --badge-case-border: #a7f3d0;
@@ -107,9 +104,6 @@
             --badge-cs-bg: rgba(59, 130, 246, 0.15);
             --badge-cs-text: #60a5fa;
             --badge-cs-border: rgba(59, 130, 246, 0.3);
-            --badge-mae-bg: rgba(168, 85, 247, 0.15);
-            --badge-mae-text: #c084fc;
-            --badge-mae-border: rgba(168, 85, 247, 0.3);
             --badge-case-bg: rgba(16, 185, 129, 0.15);
             --badge-case-text: #34d399;
             --badge-case-border: rgba(16, 185, 129, 0.3);
@@ -218,8 +212,6 @@
             align-items: center;
             gap: 0.35rem;
         }
-        .badge-cs { background: var(--badge-cs-bg); color: var(--badge-cs-text); border: 1px solid var(--badge-cs-border); }
-        .badge-maestros { background: var(--badge-mae-bg); color: var(--badge-mae-text); border: 1px solid var(--badge-mae-border); }
         .badge-has-case { background: var(--badge-case-bg); color: var(--badge-case-text); border: 1px solid var(--badge-case-border); }
         .badge-no-case { background: var(--badge-pend-bg); color: var(--badge-pend-text); border: 1px solid var(--badge-pend-border); }
         .badge-na-case { background: var(--badge-na-bg); color: var(--badge-na-text); border: 1px solid var(--badge-na-border); }
@@ -302,7 +294,7 @@
                             Reporte y Análisis de Casos de Garantía
                         </h1>
                         <p class="text-xs text-slate-500 dark:text-slate-400">
-                            Matriz Mensual por Categoría, Tiempos Promedio de Respuesta y Auditoría de Casos
+                            Casos de Garantía por Categoría, Tiempos Promedio de Respuesta y Auditoría de Reclamos
                         </p>
                     </div>
                 </div>
@@ -329,10 +321,10 @@
                     <div class="text-right px-4 py-2 rounded-xl border bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700">
                         <div class="flex items-center gap-1.5 justify-end">
                             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                            <span class="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Base Consolidada</span>
+                            <span class="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Base Garantías</span>
                         </div>
                         <div id="header-total-registros" class="text-xl font-black text-slate-900 dark:text-white leading-tight">--</div>
-                        <span class="text-[10px] text-slate-500 dark:text-slate-400 block">CS + Maestros</span>
+                        <span class="text-[10px] text-slate-500 dark:text-slate-400 block">Casos Elegibles</span>
                     </div>
                 </div>
             </div>
@@ -357,7 +349,6 @@
                 <button type="button" id="tab-btn-matriz" onclick="switchMainView('matriz')" class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-xs tracking-wide transition-all cursor-pointer shadow-md bg-blue-600 text-white">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                     <span>Matriz Gerencial & Tiempos de Respuesta</span>
-                    <span class="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-amber-400 text-slate-950">SOLICITADO</span>
                 </button>
                 <button type="button" id="tab-btn-detalle" onclick="switchMainView('detalle')" class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs tracking-wide transition-all cursor-pointer text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
@@ -365,7 +356,7 @@
                 </button>
             </div>
             <div class="text-right px-3 text-[11px] text-slate-500 dark:text-slate-400 font-semibold hidden md:block">
-                Consulta analítica consolidada 2025 - 2026
+                Solo casos de Garantía (Excluye servicios)
             </div>
         </div>
 
@@ -378,15 +369,14 @@
             <div class="executive-card p-6 space-y-5">
                 <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
                     <!-- Desglose por -->
-                    <div class="md:col-span-4">
+                    <div class="md:col-span-5">
                         <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider flex items-center gap-1.5">
                             <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
                             Desglosar Columnas Por
                         </label>
                         <select id="matriz-desglose" class="custom-input w-full rounded-xl px-4 py-2.5 font-bold text-sm shadow-sm cursor-pointer">
                             <option value="categoria" selected>Categoría / Familia de Producto (A/C, Línea Blanca, Herramientas...)</option>
-                            <option value="tipo_garantia">Tipo de Garantía (Total, Parcial, No Aplica, Servicio)</option>
-                            <option value="unidad">Unidad de Negocio (Centro de Servicios vs Maestros)</option>
+                            <option value="tipo_garantia">Tipo de Garantía (Garantía Total, Parcial, Trabajando Correctamente...)</option>
                         </select>
                     </div>
 
@@ -402,12 +392,12 @@
                     </div>
 
                     <!-- Botón Exportar Matriz a Excel -->
-                    <div class="md:col-span-5 flex md:justify-end">
+                    <div class="md:col-span-4 flex md:justify-end">
                         <button type="button" onclick="exportarMatrizExcel()" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 text-white px-6 py-2.5 rounded-xl transition-all duration-200 font-bold text-xs flex items-center gap-2.5 shadow-md shadow-emerald-700/25 cursor-pointer border border-emerald-500/20 group w-full md:w-auto justify-center">
                             <svg class="w-4 h-4 text-emerald-100 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
-                            <span>Descargar Informe Gerencial Excel (.xlsx)</span>
+                            <span>Descargar Informe Gerencial (.xlsx)</span>
                         </button>
                     </div>
                 </div>
@@ -484,16 +474,15 @@
                     </div>
                 </div>
 
-                <!-- Nota sobre tiempos y cobertura -->
+                <!-- Criterios de Elegibilidad de Garantía -->
                 <div class="flex items-start gap-3 text-xs rounded-xl p-3.5 border bg-blue-50/60 dark:bg-slate-900/60 border-blue-200 dark:border-slate-800 text-slate-700 dark:text-slate-300">
                     <div class="p-1 rounded-lg bg-blue-600 text-white mt-0.5 shrink-0">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                     </div>
                     <div class="leading-relaxed">
-                        <strong class="text-blue-900 dark:text-white">Criterio de Cálculo de Casos y Tiempos de Respuesta:</strong>
-                        Los casos reportados se contabilizan según su <strong>fecha de ingreso</strong>, incluyendo órdenes activas, en proceso, canceladas y cerradas. 
-                        El <strong>Tiempo de Diagnóstico</strong> mide desde el ingreso hasta la entrega del dictamen técnico (~2.1 días en CS y ~4.1 días en visitas técnicas de Maestros). 
-                        El <strong>Tiempo de Cierre</strong> mide desde el ingreso hasta la finalización y entrega física del equipo al cliente.
+                        <strong class="text-blue-900 dark:text-white">Criterios de Elegibilidad de Garantía Aplicados:</strong>
+                        1. <strong>Cero Servicios</strong>: Exclusivamente casos de garantía (se excluyen servicios facturables, instalaciones y mantenimientos).<br>
+                        2. <strong>Trámite Oficial en Fabricante</strong>: Para <strong class="text-blue-600 dark:text-blue-400">HISENSE</strong> (9 dígitos) y <strong class="text-purple-600 dark:text-purple-400">LG</strong> (código RNN), solo son elegibles las órdenes con número de reclamo tramitado en portal. Las demás marcas se acreditan directamente con nuestro <strong class="text-emerald-600 dark:text-emerald-400">No. de OT interna</strong>.
                     </div>
                 </div>
             </div>
@@ -503,13 +492,13 @@
                 <!-- KPI 1: Casos Reportados -->
                 <div class="executive-card p-5 relative overflow-hidden group hover:translate-y-[-2px] transition-transform border-t-4 border-t-blue-600">
                     <div class="flex items-center justify-between">
-                        <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Casos Reportados</div>
+                        <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Casos de Garantía</div>
                         <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400 flex items-center justify-center font-bold">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                         </div>
                     </div>
                     <div id="matriz-kpi-total" class="text-3xl font-black text-slate-900 dark:text-white mt-2 tracking-tight">0</div>
-                    <div id="matriz-kpi-periodo-sub" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Ene 2025 - May 2026 (Abiertos y Cerrados)</div>
+                    <div id="matriz-kpi-periodo-sub" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Ene 2025 - May 2026 (Sin servicios)</div>
                 </div>
 
                 <!-- KPI 2: Tiempo de Respuesta Diagnóstico -->
@@ -521,7 +510,7 @@
                         </div>
                     </div>
                     <div id="matriz-kpi-diag" class="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-2 tracking-tight">0.0 días</div>
-                    <div id="matriz-kpi-diag-sub" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">Ingreso a Dictamen Técnico (~49 hrs)</div>
+                    <div id="matriz-kpi-diag-sub" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">Ingreso a Dictamen Técnico</div>
                 </div>
 
                 <!-- KPI 3: Tiempo Promedio de Cierre Total -->
@@ -533,7 +522,7 @@
                         </div>
                     </div>
                     <div id="matriz-kpi-cierre" class="text-3xl font-black text-purple-600 dark:text-purple-400 mt-2 tracking-tight">0.0 días</div>
-                    <div id="matriz-kpi-cierre-sub" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">Ciclo Completo de Garantía</div>
+                    <div id="matriz-kpi-cierre-sub" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">Resolución Integral de Caso</div>
                 </div>
 
                 <!-- KPI 4: Categoría Principal -->
@@ -551,14 +540,13 @@
 
             <!-- Gráficos de Análisis Ejecutivo -->
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <!-- Gráfico 1: Casos Mensuales -->
                 <div class="lg:col-span-7 executive-card p-5">
                     <div class="flex items-center justify-between mb-4">
                         <div>
                             <h2 class="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                                Casos Reportados por Mes (Evolución)
+                                Casos de Garantía por Mes (Evolución)
                             </h2>
-                            <p class="text-xs text-slate-500 dark:text-slate-400">Volumen mensual sin importar estado de cierre</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Volumen mensual de reclamos ingresados</p>
                         </div>
                         <div class="p-2 rounded-lg bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
@@ -569,7 +557,6 @@
                     </div>
                 </div>
 
-                <!-- Gráfico 2: Tendencia de Tiempos de Respuesta -->
                 <div class="lg:col-span-5 executive-card p-5">
                     <div class="flex items-center justify-between mb-4">
                         <div>
@@ -596,7 +583,7 @@
                             Matriz Consolidada de Casos y Tiempos de Respuesta
                         </h2>
                         <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                            Valores mensuales consolidados por período y métricas de resolución
+                            Casos de garantía clasificados por mes y tiempos promedio de resolución
                         </p>
                     </div>
                     <div class="text-xs font-bold text-slate-500 dark:text-slate-400">
@@ -606,15 +593,9 @@
 
                 <div class="overflow-x-auto max-h-[600px]">
                     <table class="w-full text-left" id="tabla-matriz-mensual">
-                        <thead id="matriz-thead">
-                            <!-- Columnas dinámicas generadas según el desglose -->
-                        </thead>
-                        <tbody id="matriz-tbody">
-                            <!-- Filas dinámicas generadas por JS -->
-                        </tbody>
-                        <tfoot id="matriz-tfoot">
-                            <!-- Pie con totales y promedios ponderados -->
-                        </tfoot>
+                        <thead id="matriz-thead"></thead>
+                        <tbody id="matriz-tbody"></tbody>
+                        <tfoot id="matriz-tfoot"></tfoot>
                     </table>
                 </div>
             </div>
@@ -627,9 +608,9 @@
         <div id="view-auditoria-detallada" class="hidden space-y-6">
             <!-- Filtros y Controles -->
             <div class="executive-card p-6 space-y-5">
-                <!-- Fila 1: Marca, Unidad, Buscador -->
+                <!-- Fila 1: Marca y Buscador (Sin Unidad de Negocio) -->
                 <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                    <div class="md:col-span-4">
+                    <div class="md:col-span-5">
                         <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider flex items-center justify-between">
                             <span class="flex items-center gap-1.5">
                                 <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>
@@ -641,18 +622,7 @@
                             <option value="ALL">Todas las Marcas</option>
                         </select>
                     </div>
-                    <div class="md:col-span-3">
-                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider flex items-center gap-1.5">
-                            <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
-                            Unidad de Negocio
-                        </label>
-                        <select id="filtro-unidad" class="custom-input w-full rounded-xl px-4 py-2.5 font-medium text-sm shadow-sm cursor-pointer">
-                            <option value="ALL">Todas las Unidades (CS + Maestros)</option>
-                            <option value="CS">Centro de Servicios (CS)</option>
-                            <option value="MAESTROS">Maestros</option>
-                        </select>
-                    </div>
-                    <div class="md:col-span-5">
+                    <div class="md:col-span-7">
                         <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider flex items-center gap-1.5">
                             <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                             Búsqueda Instantánea
@@ -749,11 +719,11 @@
                 </div>
             </div>
 
-            <!-- Tarjetas Métricas KPI Detalle -->
+            <!-- Tarjetas Métricas KPI Detalle (Reenfocadas a Garantías) -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="executive-card p-5 relative overflow-hidden group hover:translate-y-[-2px] transition-transform border-t-4 border-t-blue-600">
                     <div class="flex items-center justify-between">
-                        <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Casos Marca</div>
+                        <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Casos Garantía</div>
                         <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400 flex items-center justify-center font-bold">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                         </div>
@@ -762,45 +732,45 @@
                     <div id="kpi-periodo-desc" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">En período seleccionado</div>
                 </div>
 
-                <div class="executive-card p-5 relative overflow-hidden group hover:translate-y-[-2px] transition-transform border-t-4 border-t-sky-500">
+                <div class="executive-card p-5 relative overflow-hidden group hover:translate-y-[-2px] transition-transform border-t-4 border-t-emerald-500">
                     <div class="flex items-center justify-between">
-                        <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Centro de Servicios (CS)</div>
-                        <div class="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-950 dark:text-sky-400 flex items-center justify-center font-bold">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                        <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Garantía Total</div>
+                        <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 flex items-center justify-center font-bold">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         </div>
                     </div>
-                    <div id="kpi-cs" class="text-3xl font-black text-sky-600 dark:text-sky-400 mt-2 tracking-tight">0</div>
-                    <div id="kpi-cs-pct" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">0% del total</div>
+                    <div id="kpi-total-gar" class="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-2 tracking-tight">0</div>
+                    <div id="kpi-total-gar-pct" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">0% del total</div>
                 </div>
 
                 <div class="executive-card p-5 relative overflow-hidden group hover:translate-y-[-2px] transition-transform border-t-4 border-t-purple-600">
                     <div class="flex items-center justify-between">
-                        <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Maestros</div>
+                        <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Garantía Parcial</div>
                         <div class="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400 flex items-center justify-center font-bold">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"></path></svg>
                         </div>
                     </div>
-                    <div id="kpi-maestros" class="text-3xl font-black text-purple-600 dark:text-purple-400 mt-2 tracking-tight">0</div>
-                    <div id="kpi-maestros-pct" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">0% del total</div>
+                    <div id="kpi-parcial-gar" class="text-3xl font-black text-purple-600 dark:text-purple-400 mt-2 tracking-tight">0</div>
+                    <div id="kpi-parcial-gar-pct" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">0% del total</div>
                 </div>
 
-                <div class="executive-card p-5 relative overflow-hidden group hover:translate-y-[-2px] transition-transform border-t-4 border-t-emerald-500">
+                <div class="executive-card p-5 relative overflow-hidden group hover:translate-y-[-2px] transition-transform border-t-4 border-t-indigo-500">
                     <div class="flex items-center justify-between">
-                        <div id="kpi-con-caso-title" class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Con No. Orden Marca</div>
-                        <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 flex items-center justify-center font-bold">
+                        <div id="kpi-con-caso-title" class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Control de Caso</div>
+                        <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400 flex items-center justify-center font-bold">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
                         </div>
                     </div>
-                    <div id="kpi-con-caso" class="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-2 tracking-tight">0</div>
-                    <div id="kpi-con-caso-pct" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">0 con código registrado</div>
+                    <div id="kpi-con-caso" class="text-3xl font-black text-indigo-600 dark:text-indigo-400 mt-2 tracking-tight">0</div>
+                    <div id="kpi-con-caso-pct" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">0 órdenes elegibles</div>
                 </div>
             </div>
 
-            <!-- Tabla de Datos Detalle -->
+            <!-- Tabla de Datos Detalle (Sin columna Unidad) -->
             <div class="executive-card overflow-hidden">
                 <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-900/30">
                     <div class="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                        Mostrando <span id="table-showing-start" class="font-bold text-slate-900 dark:text-white">0</span> - <span id="table-showing-end" class="font-bold text-slate-900 dark:text-white">0</span> de <span id="table-showing-total" class="font-bold text-slate-900 dark:text-white">0</span> casos
+                        Mostrando <span id="table-showing-start" class="font-bold text-slate-900 dark:text-white">0</span> - <span id="table-showing-end" class="font-bold text-slate-900 dark:text-white">0</span> de <span id="table-showing-total" class="font-bold text-slate-900 dark:text-white">0</span> casos de garantía
                     </div>
                     <div class="flex items-center gap-2 text-xs">
                         <span class="text-slate-500 dark:text-slate-400">Filas por página:</span>
@@ -817,16 +787,16 @@
                     <table class="w-full text-left">
                         <thead>
                             <tr>
-                                <th class="w-20">Unidad</th>
                                 <th class="w-28">No. OT</th>
                                 <th class="w-36">No. Orden Marca</th>
                                 <th class="w-36">Fecha Ingreso</th>
                                 <th class="w-64">Nombre del Cliente</th>
                                 <th>Descripción del Producto</th>
-                                <th class="w-36">Categoría</th>
+                                <th class="w-36">Modelo / RMS</th>
                                 <th class="w-36">Serie del Equipo</th>
-                                <th class="w-28">Tiempo Diag</th>
-                                <th class="w-28">Tiempo Cierre</th>
+                                <th class="w-36">Categoría</th>
+                                <th class="w-28 text-right">Tiempo Diag</th>
+                                <th class="w-28 text-right">Tiempo Cierre</th>
                             </tr>
                         </thead>
                         <tbody id="tabla-cuerpo">
