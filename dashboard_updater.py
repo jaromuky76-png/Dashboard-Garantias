@@ -276,6 +276,7 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
                 externo_rnn_i = next((idx for k, idx in h.items() if "EXTERNO/RNN" in k or "EXTERNO" in k), 3)
 
                 # CS specific
+                npp_i = next((idx for k, idx in h.items() if k == "NPP" or "NPP" in k), 18)
                 mod_i = h.get('MODELO', -1)
                 ser_i = next((idx for k, idx in h.items() if "SERIE" in k), -1)
                 fd_i = h.get('FECHA Y HORA DE ENTREGA DE DIAGNOSTICO', -1)
@@ -449,9 +450,16 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
                     # ----------------- REPORTE DE GARANTIAS POR MARCA -----------------
                     cli = safe_str(row[cli_i] if cli_i >= 0 and cli_i < len(row) else '')
                     if unidad.upper() == 'CS':
-                        mod = safe_str(row[mod_i] if mod_i >= 0 and mod_i < len(row) else '')
+                        npp_val = safe_str(row[npp_i] if npp_i >= 0 and npp_i < len(row) else '')
+                        mod_val = safe_str(row[mod_i] if mod_i >= 0 and mod_i < len(row) else '')
                         ser = safe_str(row[ser_i] if ser_i >= 0 and ser_i < len(row) else '')
-                        modelo_rep = mod if mod else rms
+                        # En CS, Col S (NPP) es la columna oficial para modelo
+                        if npp_val and npp_val not in ('--', '0', 'N/A', 'None'):
+                            modelo_rep = npp_val
+                        elif mod_val and mod_val not in ('--', '0', 'N/A', 'None'):
+                            modelo_rep = mod_val
+                        else:
+                            modelo_rep = rms
                         desc_rep = desc
                     else:
                         mod_e = safe_str(row[mod_e_i] if mod_e_i >= 0 and mod_e_i < len(row) else '')
@@ -462,7 +470,8 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
                         desc_c = safe_str(row[desc_c_i] if desc_c_i >= 0 and desc_c_i < len(row) else '')
                         desc_list = [d for d in (desc_e, desc_c) if d and d not in ('--', '0')]
                         desc_rep = " / ".join(desc_list) if desc_list else (desc or actividad_val)
-                        mod_list = [m for m in (mod_e, mod_c) if m and m not in ('--', '0')]
+                        # En Maestros, Col V (modelo evaporador) es la columna oficial para modelo
+                        mod_list = [m for m in (mod_e, mod_c) if m and m not in ('--', '0', 'N/A', 'None')]
                         modelo_rep = " / ".join(mod_list) if mod_list else rms
                         ser_list = [s for s in (ser_e, ser_c) if s and s not in ('--', '0')]
                         ser = " / ".join(ser_list)

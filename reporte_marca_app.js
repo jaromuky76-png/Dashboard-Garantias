@@ -572,7 +572,88 @@
     };
 
     // =========================================================================
-    // EXPORTACIÓN A EXCEL: MATRIZ GERENCIAL + DETALLE EN 2 HOJAS (SIN UNIDAD)
+    // ESTILOS Y HELPERS EJECUTIVOS PARA EXCEL (XLSX-JS-STYLE)
+    // =========================================================================
+    const EXCEL_STYLES = {
+        borderThin: {
+            top: { style: "thin", color: { rgb: "CBD5E1" } },
+            bottom: { style: "thin", color: { rgb: "CBD5E1" } },
+            left: { style: "thin", color: { rgb: "CBD5E1" } },
+            right: { style: "thin", color: { rgb: "CBD5E1" } }
+        },
+        borderData: {
+            top: { style: "thin", color: { rgb: "E2E8F0" } },
+            bottom: { style: "thin", color: { rgb: "E2E8F0" } },
+            left: { style: "thin", color: { rgb: "E2E8F0" } },
+            right: { style: "thin", color: { rgb: "E2E8F0" } }
+        },
+        borderTotal: {
+            top: { style: "thin", color: { rgb: "475569" } },
+            bottom: { style: "double", color: { rgb: "0F2942" } },
+            left: { style: "thin", color: { rgb: "CBD5E1" } },
+            right: { style: "thin", color: { rgb: "CBD5E1" } }
+        }
+    };
+
+    function applyBannerStyles(ws, totalCols, companyTitle, reportTitle, metaText) {
+        // Row 0: Company Banner
+        const cellA1 = ws['A1'];
+        if (cellA1) {
+            cellA1.v = companyTitle;
+            cellA1.s = {
+                font: { name: "Calibri", sz: 14, bold: true, color: { rgb: "FFFFFF" } },
+                fill: { fgColor: { rgb: "0F2942" } },
+                alignment: { horizontal: "center", vertical: "center" }
+            };
+        }
+        for (let c = 1; c < totalCols; c++) {
+            const ref = XLSX.utils.encode_cell({ r: 0, c });
+            if (!ws[ref]) ws[ref] = { t: "s", v: "" };
+            ws[ref].s = { fill: { fgColor: { rgb: "0F2942" } } };
+        }
+
+        // Row 1: Report Subtitle
+        const cellA2 = ws['A2'];
+        if (cellA2) {
+            cellA2.v = reportTitle;
+            cellA2.s = {
+                font: { name: "Calibri", sz: 11, bold: true, color: { rgb: "1E3A8A" } },
+                fill: { fgColor: { rgb: "F1F5F9" } },
+                alignment: { horizontal: "center", vertical: "center" }
+            };
+        }
+        for (let c = 1; c < totalCols; c++) {
+            const ref = XLSX.utils.encode_cell({ r: 1, c });
+            if (!ws[ref]) ws[ref] = { t: "s", v: "" };
+            ws[ref].s = { fill: { fgColor: { rgb: "F1F5F9" } } };
+        }
+
+        // Row 2: Metadata badge
+        const cellA3 = ws['A3'];
+        if (cellA3) {
+            cellA3.v = metaText;
+            cellA3.s = {
+                font: { name: "Calibri", sz: 9.5, italic: true, color: { rgb: "475569" } },
+                fill: { fgColor: { rgb: "F1F5F9" } },
+                alignment: { horizontal: "center", vertical: "center" }
+            };
+        }
+        for (let c = 1; c < totalCols; c++) {
+            const ref = XLSX.utils.encode_cell({ r: 2, c });
+            if (!ws[ref]) ws[ref] = { t: "s", v: "" };
+            ws[ref].s = { fill: { fgColor: { rgb: "F1F5F9" } } };
+        }
+
+        ws['!merges'] = ws['!merges'] || [];
+        ws['!merges'].push(
+            { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } },
+            { s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } },
+            { s: { r: 2, c: 0 }, e: { r: 2, c: totalCols - 1 } }
+        );
+    }
+
+    // =========================================================================
+    // EXPORTACIÓN A EXCEL: MATRIZ GERENCIAL + DETALLE EN 2 HOJAS
     // =========================================================================
     window.exportarMatrizExcel = function() {
         if (typeof XLSX === 'undefined') {
@@ -640,59 +721,167 @@
             mesesData[key].total++;
             mesesData[key].categorias[catKey] = (mesesData[key].categorias[catKey] || 0) + 1;
 
-            if (r.dias_diagnostico !== null && !isNaN(r.dias_diagnostico)) {
+            if (r.dias_diagnostico !== null && r.dias_diagnostico !== undefined && !isNaN(r.dias_diagnostico)) {
                 mesesData[key].diagDias.push(parseFloat(r.dias_diagnostico));
                 allDiagDias.push(parseFloat(r.dias_diagnostico));
             }
-            if (r.dias_cierre !== null && !isNaN(r.dias_cierre)) {
+            if (r.dias_cierre !== null && r.dias_cierre !== undefined && !isNaN(r.dias_cierre)) {
                 mesesData[key].cierreDias.push(parseFloat(r.dias_cierre));
                 allCierreDias.push(parseFloat(r.dias_cierre));
             }
         });
 
-        // Construir matriz para Hoja 1
-        const rowsHoja1 = [];
-        rowsHoja1.push(["SILVA INTERNACIONAL S.A. - INFORME GERENCIAL DE GARANTÍAS Y TIEMPOS DE RESPUESTA"]);
-        rowsHoja1.push([`Período: ${MESES_NOMBRES[matrizDesdeMes]} ${matrizDesdeAnio} a ${MESES_NOMBRES[matrizHastaMes]} ${matrizHastaAnio} | Marca: ${matrizMarca === 'ALL' ? 'Todas las Marcas' : matrizMarca}`]);
-        rowsHoja1.push([]);
+        // Construir filas para Hoja 1
+        const rowsHoja1 = [
+            ["SILVA INTERNACIONAL S.A."],
+            ["INFORME GERENCIAL DE CASOS DE GARANTÍA Y TIEMPOS DE RESPUESTA"],
+            [`Período: ${MESES_NOMBRES[matrizDesdeMes]} ${matrizDesdeAnio} a ${MESES_NOMBRES[matrizHastaMes]} ${matrizHastaAnio}   |   Filtro Marca: ${matrizMarca === 'ALL' ? 'Todas las Marcas (Consolidado)' : matrizMarca}   |   Total Casos: ${records.length.toLocaleString()}`],
+            [] // Espaciado
+        ];
 
-        // Encabezados
         const headersH1 = ["Mes / Período", ...categorias, "Total Casos", "Tiempo Diag. Prom (Días)", "Tiempo Cierre Prom (Días)"];
         rowsHoja1.push(headersH1);
 
         mesesEnRango.forEach(m => {
             const d = mesesData[m.key];
-            const avgD = d.diagDias.length > 0 ? parseFloat((d.diagDias.reduce((a, b) => a + b, 0) / d.diagDias.length).toFixed(1)) : 0;
-            const avgC = d.cierreDias.length > 0 ? parseFloat((d.cierreDias.reduce((a, b) => a + b, 0) / d.cierreDias.length).toFixed(1)) : 0;
+            const avgD = d.diagDias.length > 0 ? parseFloat((d.diagDias.reduce((a, b) => a + b, 0) / d.diagDias.length).toFixed(1)) : null;
+            const avgC = d.cierreDias.length > 0 ? parseFloat((d.cierreDias.reduce((a, b) => a + b, 0) / d.cierreDias.length).toFixed(1)) : null;
 
             const row = [m.label];
             categorias.forEach(c => { row.push(d.categorias[c] || 0); });
             row.push(d.total);
-            row.push(avgD > 0 ? avgD : "-");
-            row.push(avgC > 0 ? avgC : "-");
+            row.push(avgD !== null ? avgD : "-");
+            row.push(avgC !== null ? avgC : "-");
             rowsHoja1.push(row);
         });
 
-        // Fila de totales
-        const avgTotD = allDiagDias.length > 0 ? parseFloat((allDiagDias.reduce((a, b) => a + b, 0) / allDiagDias.length).toFixed(1)) : 0;
-        const avgTotC = allCierreDias.length > 0 ? parseFloat((allCierreDias.reduce((a, b) => a + b, 0) / allCierreDias.length).toFixed(1)) : 0;
+        // Fila Totales
+        const avgTotD = allDiagDias.length > 0 ? parseFloat((allDiagDias.reduce((a, b) => a + b, 0) / allDiagDias.length).toFixed(1)) : null;
+        const avgTotC = allCierreDias.length > 0 ? parseFloat((allCierreDias.reduce((a, b) => a + b, 0) / allCierreDias.length).toFixed(1)) : null;
         const totalRow = ["TOTAL / PROMEDIO GENERAL"];
         categorias.forEach(c => { totalRow.push(catCountsGlobal[c] || 0); });
         totalRow.push(records.length);
-        totalRow.push(avgTotD > 0 ? avgTotD : "-");
-        totalRow.push(avgTotC > 0 ? avgTotC : "-");
+        totalRow.push(avgTotD !== null ? avgTotD : "-");
+        totalRow.push(avgTotC !== null ? avgTotC : "-");
         rowsHoja1.push(totalRow);
 
         const ws1 = XLSX.utils.aoa_to_sheet(rowsHoja1);
 
-        // 2. Datos para Hoja 2: Detalle de Casos (SIN UNIDAD)
-        const rowsHoja2 = [];
-        rowsHoja2.push([
+        // Estilar Hoja 1
+        try {
+            applyBannerStyles(ws1, headersH1.length, "SILVA INTERNACIONAL S.A.", "INFORME GERENCIAL DE CASOS DE GARANTÍA Y TIEMPOS DE RESPUESTA", rowsHoja1[2][0]);
+
+            // Header row (Index 4)
+            for (let c = 0; c < headersH1.length; c++) {
+                const ref = XLSX.utils.encode_cell({ r: 4, c });
+                if (ws1[ref]) {
+                    let bg = "1E3A8A";
+                    if (c === headersH1.length - 3) bg = "0F2942";
+                    else if (c === headersH1.length - 2) bg = "065F46";
+                    else if (c === headersH1.length - 1) bg = "5B21B6";
+
+                    ws1[ref].s = {
+                        font: { name: "Calibri", sz: 10, bold: true, color: { rgb: "FFFFFF" } },
+                        fill: { fgColor: { rgb: bg } },
+                        alignment: { horizontal: "center", vertical: "center", wrapText: true },
+                        border: EXCEL_STYLES.borderThin
+                    };
+                }
+            }
+
+            // Data rows (Index 5 to rowsHoja1.length - 2)
+            const rowHeights = [{ hpt: 26 }, { hpt: 20 }, { hpt: 18 }, { hpt: 8 }, { hpt: 28 }];
+            for (let r = 5; r < rowsHoja1.length - 1; r++) {
+                rowHeights.push({ hpt: 20 });
+                const isOdd = (r % 2 === 1);
+                const bgRow = isOdd ? "F8FAFC" : "FFFFFF";
+
+                for (let c = 0; c < headersH1.length; c++) {
+                    const ref = XLSX.utils.encode_cell({ r, c });
+                    if (ws1[ref]) {
+                        const isMes = (c === 0);
+                        const isTot = (c === headersH1.length - 3);
+                        const isDiag = (c === headersH1.length - 2);
+                        const isCierre = (c === headersH1.length - 1);
+
+                        let align = isMes ? "left" : "right";
+                        let fontColor = "0F172A";
+                        let fontBold = isMes || isTot;
+                        let cellBg = bgRow;
+
+                        if (isTot) { cellBg = isOdd ? "EFF6FF" : "F0F7FF"; fontColor = "1E3A8A"; }
+                        else if (isDiag) { cellBg = isOdd ? "ECFDF5" : "F0FDF4"; fontColor = "047857"; fontBold = true; }
+                        else if (isCierre) { cellBg = isOdd ? "F5F3FF" : "FAF5FF"; fontColor = "7C3AED"; fontBold = true; }
+
+                        if (ws1[ref].v === "-") align = "center";
+
+                        ws1[ref].s = {
+                            font: { name: "Calibri", sz: 10, bold: fontBold, color: { rgb: fontColor } },
+                            fill: { fgColor: { rgb: cellBg } },
+                            alignment: { horizontal: align, vertical: "center" },
+                            border: EXCEL_STYLES.borderData
+                        };
+                        if (typeof ws1[ref].v === 'number') {
+                            ws1[ref].z = (isDiag || isCierre) ? "0.0" : "#,##0";
+                        }
+                    }
+                }
+            }
+
+            // Total row (Index rowsHoja1.length - 1)
+            const lastR = rowsHoja1.length - 1;
+            rowHeights.push({ hpt: 24 });
+            for (let c = 0; c < headersH1.length; c++) {
+                const ref = XLSX.utils.encode_cell({ r: lastR, c });
+                if (ws1[ref]) {
+                    const isDiag = (c === headersH1.length - 2);
+                    const isCierre = (c === headersH1.length - 1);
+                    const isTot = (c === headersH1.length - 3);
+
+                    let fontColor = "0F2942";
+                    if (isTot) fontColor = "1E3A8A";
+                    else if (isDiag) fontColor = "047857";
+                    else if (isCierre) fontColor = "7C3AED";
+
+                    ws1[ref].s = {
+                        font: { name: "Calibri", sz: 10.5, bold: true, color: { rgb: fontColor } },
+                        fill: { fgColor: { rgb: "E2E8F0" } },
+                        alignment: { horizontal: c === 0 ? "left" : "right", vertical: "center" },
+                        border: EXCEL_STYLES.borderTotal
+                    };
+                    if (typeof ws1[ref].v === 'number') {
+                        ws1[ref].z = (isDiag || isCierre) ? "0.0" : "#,##0";
+                    }
+                }
+            }
+
+            ws1['!rows'] = rowHeights;
+            ws1['!cols'] = [
+                { wch: 22 },
+                ...categorias.map(() => ({ wch: 20 })),
+                { wch: 16 },
+                { wch: 24 },
+                { wch: 24 }
+            ];
+        } catch (e) {
+            console.warn("Estilos de Hoja 1 omitidos:", e);
+        }
+
+        // 2. Datos para Hoja 2: Detalle de Casos (14 Columnas exactas - SIN Estatus)
+        const rowsHoja2 = [
+            ["SILVA INTERNACIONAL S.A."],
+            ["AUDITORÍA DETALLADA DE CASOS DE GARANTÍA POR MARCA"],
+            [`Período: ${MESES_NOMBRES[matrizDesdeMes]} ${matrizDesdeAnio} a ${MESES_NOMBRES[matrizHastaMes]} ${matrizHastaAnio}   |   Marca: ${matrizMarca === 'ALL' ? 'Todas las Marcas' : matrizMarca}   |   Total Casos: ${records.length.toLocaleString()}   |   Criterio: Casos de Garantía (Excluye Servicios)`],
+            [] // Espaciado
+        ];
+
+        const headersH2 = [
             "No. OT", "Marca", "No. Orden Marca", "Fecha Ingreso",
-            "Cliente", "Descripción del Producto", "Modelo / RMS", "Serie del Equipo",
+            "Cliente", "Descripción del Producto", "Modelo", "Serie del Equipo",
             "Categoría", "Tipo de Garantía", "Fecha Diagnóstico", "Días Diagnóstico",
-            "Fecha Cierre", "Días Cierre", "Estatus"
-        ]);
+            "Fecha Cierre", "Días Cierre"
+        ];
+        rowsHoja2.push(headersH2);
 
         records.forEach(r => {
             rowsHoja2.push([
@@ -702,50 +891,103 @@
                 r.fecha || "",
                 r.cliente || "",
                 r.descripcion || "",
-                r.modelo || r.rms || "",
+                r.modelo || "",
                 r.serie || "",
                 r.categoria || "",
                 r.tipo_garantia || "",
                 r.fecha_diagnostico || "",
-                r.dias_diagnostico !== null && r.dias_diagnostico !== undefined ? r.dias_diagnostico : "",
+                r.dias_diagnostico !== null && r.dias_diagnostico !== undefined && !isNaN(r.dias_diagnostico) ? parseFloat(r.dias_diagnostico) : "-",
                 r.fecha_cierre || "",
-                r.dias_cierre !== null && r.dias_cierre !== undefined ? r.dias_cierre : "",
-                r.estatus || ""
+                r.dias_cierre !== null && r.dias_cierre !== undefined && !isNaN(r.dias_cierre) ? parseFloat(r.dias_cierre) : "-"
             ]);
         });
 
         const ws2 = XLSX.utils.aoa_to_sheet(rowsHoja2);
 
-        // Aplicar estilos si están disponibles
+        // Estilar Hoja 2
         try {
-            const styleHeader = {
-                font: { bold: true, color: { rgb: "FFFFFF" }, sz: 10, name: "Calibri" },
-                fill: { fgColor: { rgb: "1E3A8A" } },
-                alignment: { horizontal: "center", vertical: "center", wrapText: true }
-            };
-            const styleTotal = {
-                font: { bold: true, color: { rgb: "0F172A" }, sz: 10, name: "Calibri" },
-                fill: { fgColor: { rgb: "E2E8F0" } },
-                alignment: { horizontal: "center", vertical: "center" }
-            };
+            applyBannerStyles(ws2, headersH2.length, "SILVA INTERNACIONAL S.A.", "AUDITORÍA DETALLADA DE CASOS DE GARANTÍA POR MARCA", rowsHoja2[2][0]);
 
-            const range1 = XLSX.utils.decode_range(ws1['!ref']);
-            for (let C = range1.s.c; C <= range1.e.c; ++C) {
-                const cellRefH = XLSX.utils.encode_cell({ r: 3, c: C });
-                if (ws1[cellRefH]) ws1[cellRefH].s = styleHeader;
-
-                const cellRefT = XLSX.utils.encode_cell({ r: rowsHoja1.length - 1, c: C });
-                if (ws1[cellRefT]) ws1[cellRefT].s = styleTotal;
+            // Header row (Index 4)
+            for (let c = 0; c < headersH2.length; c++) {
+                const ref = XLSX.utils.encode_cell({ r: 4, c });
+                if (ws2[ref]) {
+                    ws2[ref].s = {
+                        font: { name: "Calibri", sz: 10, bold: true, color: { rgb: "FFFFFF" } },
+                        fill: { fgColor: { rgb: "0F2942" } },
+                        alignment: { horizontal: "center", vertical: "center", wrapText: true },
+                        border: EXCEL_STYLES.borderThin
+                    };
+                }
             }
 
-            ws1['!cols'] = [{ wch: 22 }, ...categorias.map(() => ({ wch: 18 })), { wch: 15 }, { wch: 22 }, { wch: 22 }];
+            // Data rows (Index 5 to rowsHoja2.length - 1)
+            const rowHeights2 = [{ hpt: 26 }, { hpt: 20 }, { hpt: 18 }, { hpt: 8 }, { hpt: 26 }];
+            for (let r = 5; r < rowsHoja2.length; r++) {
+                rowHeights2.push({ hpt: 20 });
+                const isOdd = (r % 2 === 1);
+                const bgRow = isOdd ? "F8FAFC" : "FFFFFF";
+
+                for (let c = 0; c < headersH2.length; c++) {
+                    const ref = XLSX.utils.encode_cell({ r, c });
+                    if (ws2[ref]) {
+                        let align = "center";
+                        let fontBold = false;
+                        let fontColor = "0F172A";
+                        let cellBg = bgRow;
+
+                        if (c === 0) { fontBold = true; fontColor = "0F172A"; }
+                        else if (c === 1) { fontBold = true; fontColor = "1E3A8A"; }
+                        else if (c === 2) { fontColor = "334155"; }
+                        else if (c === 4 || c === 5) { align = "left"; }
+                        else if (c === 6) { fontBold = true; fontColor = "0F172A"; }
+                        else if (c === 11) {
+                            align = ws2[ref].v === "-" ? "center" : "right";
+                            fontBold = (ws2[ref].v !== "-");
+                            fontColor = "047857";
+                            cellBg = isOdd ? "ECFDF5" : "F0FDF4";
+                        }
+                        else if (c === 13) {
+                            align = ws2[ref].v === "-" ? "center" : "right";
+                            fontBold = (ws2[ref].v !== "-");
+                            fontColor = "7C3AED";
+                            cellBg = isOdd ? "F5F3FF" : "FAF5FF";
+                        }
+
+                        ws2[ref].s = {
+                            font: { name: "Calibri", sz: 10, bold: fontBold, color: { rgb: fontColor } },
+                            fill: { fgColor: { rgb: cellBg } },
+                            alignment: { horizontal: align, vertical: "center", wrapText: (c === 5) },
+                            border: EXCEL_STYLES.borderData
+                        };
+                        if (typeof ws2[ref].v === 'number') {
+                            ws2[ref].z = (c === 11 || c === 13) ? "0.0" : "#,##0";
+                        }
+                    }
+                }
+            }
+
+            ws2['!rows'] = rowHeights2;
             ws2['!cols'] = [
-                { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 18 }, { wch: 30 },
-                { wch: 40 }, { wch: 20 }, { wch: 20 }, { wch: 22 }, { wch: 20 },
-                { wch: 18 }, { wch: 14 }, { wch: 18 }, { wch: 14 }, { wch: 15 }
+                { wch: 12 }, // No. OT
+                { wch: 16 }, // Marca
+                { wch: 22 }, // No. Orden Marca
+                { wch: 18 }, // Fecha Ingreso
+                { wch: 32 }, // Cliente
+                { wch: 44 }, // Descripcion
+                { wch: 24 }, // Modelo (Col G)
+                { wch: 20 }, // Serie
+                { wch: 24 }, // Categoria
+                { wch: 22 }, // Tipo Garantia
+                { wch: 18 }, // Fecha Diag
+                { wch: 16 }, // Dias Diag
+                { wch: 18 }, // Fecha Cierre
+                { wch: 16 }  // Dias Cierre
             ];
+
+            ws2['!autofilter'] = { ref: `A5:N${rowsHoja2.length}` };
         } catch (e) {
-            console.warn("Estilos de celda omitidos:", e);
+            console.warn("Estilos de Hoja 2 omitidos:", e);
         }
 
         const wb = XLSX.utils.book_new();
@@ -758,234 +1000,8 @@
     };
 
     // =========================================================================
-    // LÓGICA DE AUDITORÍA DETALLADA (TABLA DE OTs)
+    // EXPORTACIÓN A EXCEL DIRECTA DESDE PESTAÑA AUDITORÍA DETALLADA
     // =========================================================================
-    function deseleccionarBotonesRapidosDetalle() {
-        document.querySelectorAll('#view-auditoria-detallada .btn-periodo').forEach(b => b.classList.remove('active'));
-    }
-
-    window.setRangoRapido = function(dAnio, dMes, hAnio, hMes, btnElement) {
-        deseleccionarBotonesRapidosDetalle();
-        if (btnElement) btnElement.classList.add('active');
-
-        const elDMes = document.getElementById('filtro-desde-mes');
-        const elDAnio = document.getElementById('filtro-desde-anio');
-        const elHMes = document.getElementById('filtro-hasta-mes');
-        const elHAnio = document.getElementById('filtro-hasta-anio');
-
-        if (elDMes) elDMes.value = String(dMes);
-        if (elDAnio) elDAnio.value = String(dAnio);
-        if (elHMes) elHMes.value = String(hMes);
-        if (elHAnio) elHAnio.value = String(hAnio);
-
-        currentPage = 1;
-        aplicarFiltrosDetalle();
-    };
-
-    window.limpiarBuscador = function() {
-        const input = document.getElementById('buscador-general');
-        if (input) {
-            input.value = '';
-            document.getElementById('btn-clear-search')?.classList.add('hidden');
-            currentPage = 1;
-            aplicarFiltrosDetalle();
-        }
-    };
-
-    function aplicarFiltrosDetalle() {
-        const fMarca = document.getElementById('filtro-marca')?.value || 'ALL';
-        const dMes = parseInt(document.getElementById('filtro-desde-mes')?.value || 1);
-        const dAnio = parseInt(document.getElementById('filtro-desde-anio')?.value || 2026);
-        const hMes = parseInt(document.getElementById('filtro-hasta-mes')?.value || 8);
-        const hAnio = parseInt(document.getElementById('filtro-hasta-anio')?.value || 2026);
-        const query = (document.getElementById('buscador-general')?.value || '').trim().toUpperCase();
-
-        const startVal = dAnio * 100 + dMes;
-        const endVal = hAnio * 100 + hMes;
-
-        filteredDetalleRecords = allRecords.filter(r => {
-            if (fMarca !== 'ALL' && (r.marca || '').toUpperCase() !== fMarca) return false;
-
-            const anio = parseInt(r.anio) || 2026;
-            const mesNum = parseInt(r.mesNum) || 1;
-            const rVal = anio * 100 + mesNum;
-            if (rVal < startVal || rVal > endVal) return false;
-
-            if (query.length > 0) {
-                const match = (r.ot && r.ot.toUpperCase().includes(query)) ||
-                              (r.no_caso_marca && r.no_caso_marca.toUpperCase().includes(query)) ||
-                              (r.cliente && r.cliente.toUpperCase().includes(query)) ||
-                              (r.descripcion && r.descripcion.toUpperCase().includes(query)) ||
-                              (r.modelo && r.modelo.toUpperCase().includes(query)) ||
-                              (r.rms && r.rms.toUpperCase().includes(query)) ||
-                              (r.serie && r.serie.toUpperCase().includes(query)) ||
-                              (r.categoria && r.categoria.toUpperCase().includes(query));
-                if (!match) return false;
-            }
-            return true;
-        });
-
-        // Actualizar KPIs Detalle
-        actualizarKPIsDetalle(fMarca);
-
-        // Renderizar Tabla Detalle
-        renderTablaDetalle();
-    }
-
-    function actualizarKPIsDetalle(marcaSeleccionada) {
-        const total = filteredDetalleRecords.length;
-        let garTotalCount = 0;
-        let garParcialCount = 0;
-        let conCasoCount = 0;
-
-        filteredDetalleRecords.forEach(r => {
-            const tg = (r.tipo_garantia || '').toUpperCase();
-            if (tg.includes('PARCIAL')) {
-                garParcialCount++;
-            } else {
-                garTotalCount++;
-            }
-
-            if (r.no_caso_marca && r.no_caso_marca.trim() !== '') {
-                conCasoCount++;
-            }
-        });
-
-        const elTot = document.getElementById('kpi-total');
-        if (elTot) elTot.textContent = total.toLocaleString();
-
-        const elGarTot = document.getElementById('kpi-total-gar');
-        const elGarTotPct = document.getElementById('kpi-total-gar-pct');
-        if (elGarTot) elGarTot.textContent = garTotalCount.toLocaleString();
-        if (elGarTotPct) elGarTotPct.textContent = total > 0 ? `${((garTotalCount / total) * 100).toFixed(1)}% del total` : '0% del total';
-
-        const elGarParc = document.getElementById('kpi-parcial-gar');
-        const elGarParcPct = document.getElementById('kpi-parcial-gar-pct');
-        if (elGarParc) elGarParc.textContent = garParcialCount.toLocaleString();
-        if (elGarParcPct) elGarParcPct.textContent = total > 0 ? `${((garParcialCount / total) * 100).toFixed(1)}% del total` : '0% del total';
-
-        const elCaso = document.getElementById('kpi-con-caso');
-        const elCasoPct = document.getElementById('kpi-con-caso-pct');
-        const elCasoTitle = document.getElementById('kpi-con-caso-title');
-
-        if (elCaso) elCaso.textContent = conCasoCount.toLocaleString();
-        if (elCasoPct) {
-            if (marcaSeleccionada === 'HISENSE') {
-                if (elCasoTitle) elCasoTitle.textContent = 'Orden Portal Hisense';
-                elCasoPct.textContent = total > 0 ? '100% validadas en portal (9 dígitos)' : '0 en período';
-            } else if (marcaSeleccionada === 'LG') {
-                if (elCasoTitle) elCasoTitle.textContent = 'Orden Portal LG (RNN)';
-                elCasoPct.textContent = total > 0 ? '100% validadas en portal RNN' : '0 en período';
-            } else if (marcaSeleccionada === 'ALL') {
-                if (elCasoTitle) elCasoTitle.textContent = 'Control de Casos Marca';
-                elCasoPct.textContent = total > 0 ? `${conCasoCount.toLocaleString()} con portal (${((conCasoCount / total) * 100).toFixed(1)}%)` : '0 casos';
-            } else {
-                if (elCasoTitle) elCasoTitle.textContent = 'Control OT Interna';
-                elCasoPct.textContent = `${total.toLocaleString()} órdenes con No. OT SILVA`;
-            }
-        }
-    }
-
-    function renderTablaDetalle() {
-        const tbody = document.getElementById('tabla-cuerpo');
-        if (!tbody) return;
-
-        const total = filteredDetalleRecords.length;
-        const totalPages = Math.ceil(total / pageSize) || 1;
-        if (currentPage > totalPages) currentPage = totalPages;
-
-        const startIdx = (currentPage - 1) * pageSize;
-        const endIdx = Math.min(startIdx + pageSize, total);
-        const pageItems = filteredDetalleRecords.slice(startIdx, endIdx);
-
-        // Indicadores paginador
-        const elShowingStart = document.getElementById('table-showing-start');
-        const elShowingEnd = document.getElementById('table-showing-end');
-        const elShowingTotal = document.getElementById('table-showing-total');
-        const elPagInfo = document.getElementById('paginador-info');
-        const btnPrev = document.getElementById('btn-pag-prev');
-        const btnNext = document.getElementById('btn-pag-next');
-
-        if (elShowingStart) elShowingStart.textContent = total > 0 ? (startIdx + 1).toLocaleString() : '0';
-        if (elShowingEnd) elShowingEnd.textContent = endIdx.toLocaleString();
-        if (elShowingTotal) elShowingTotal.textContent = total.toLocaleString();
-        if (elPagInfo) elPagInfo.textContent = `Página ${currentPage.toLocaleString()} de ${totalPages.toLocaleString()}`;
-
-        if (btnPrev) btnPrev.disabled = (currentPage <= 1);
-        if (btnNext) btnNext.disabled = (currentPage >= totalPages);
-
-        if (pageItems.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-12 text-slate-400 dark:text-slate-500 font-medium">No se encontraron casos de garantía con los filtros seleccionados.</td></tr>`;
-            return;
-        }
-
-        let html = '';
-        pageItems.forEach(r => {
-            let noCasoBadge = '';
-            if (r.no_caso_marca) {
-                noCasoBadge = `<div class="flex items-center gap-1.5">
-                    <span class="badge badge-has-case font-mono font-bold">${r.no_caso_marca}</span>
-                    <button onclick="copiarAlPortapapeles('${r.no_caso_marca}', 'No. Caso')" class="copy-btn text-slate-400" title="Copiar No. de Caso">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                    </button>
-                </div>`;
-            } else {
-                noCasoBadge = '<span class="badge badge-na-case text-[10px]">No aplica portal</span>';
-            }
-
-            const diagTag = (r.dias_diagnostico !== null && r.dias_diagnostico !== undefined) ? `<span class="text-emerald-600 dark:text-emerald-400 font-bold">${r.dias_diagnostico} d</span>` : '<span class="text-slate-400">-</span>';
-            const cierreTag = (r.dias_cierre !== null && r.dias_cierre !== undefined) ? `<span class="text-purple-600 dark:text-purple-400 font-bold">${r.dias_cierre} d</span>` : '<span class="text-slate-400">-</span>';
-
-            html += `<tr class="table-row-item text-xs">
-                <td>
-                    <div class="flex items-center gap-1.5">
-                        ${r.link ? `<a href="${r.link}" target="_blank" class="font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">${r.ot}<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg></a>` : `<span class="font-bold text-slate-800 dark:text-slate-200">${r.ot}</span>`}
-                        <button onclick="copiarAlPortapapeles('${r.ot}', 'No. OT')" class="copy-btn text-slate-400" title="Copiar No. OT">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                        </button>
-                    </div>
-                </td>
-                <td>${noCasoBadge}</td>
-                <td class="text-slate-600 dark:text-slate-300 whitespace-nowrap font-medium">${r.fecha || '--'}</td>
-                <td class="font-medium text-slate-900 dark:text-slate-100">${r.cliente || '--'}</td>
-                <td class="text-slate-700 dark:text-slate-300 max-w-xs truncate" title="${r.descripcion || ''}">${r.descripcion || '--'}</td>
-                <td class="font-medium text-slate-800 dark:text-slate-200">${r.modelo || r.rms || '--'}</td>
-                <td>${r.serie ? `<span class="serie-chip">${r.serie}</span>` : '<span class="text-slate-400 text-xs italic">S/N</span>'}</td>
-                <td><span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">${r.categoria || 'General'}</span></td>
-                <td class="text-right">${diagTag}</td>
-                <td class="text-right">${cierreTag}</td>
-            </tr>`;
-        });
-
-        tbody.innerHTML = html;
-    }
-
-    window.cambiarPagina = function(delta) {
-        currentPage += delta;
-        renderTablaDetalle();
-    };
-
-    window.cambiarTamanoPagina = function(tam) {
-        pageSize = parseInt(tam) || 25;
-        currentPage = 1;
-        renderTablaDetalle();
-    };
-
-    window.copiarAlPortapapeles = function(texto, label) {
-        if (!texto) return;
-        navigator.clipboard.writeText(texto).then(() => {
-            const toast = document.getElementById('toast-copy');
-            const msg = document.getElementById('toast-msg');
-            if (toast && msg) {
-                msg.textContent = `${label} "${texto}" copiado`;
-                toast.style.display = 'flex';
-                setTimeout(() => { toast.style.display = 'none'; }, 2000);
-            }
-        }).catch(err => {
-            console.error('Error al copiar:', err);
-        });
-    };
-
     window.exportarExcel = function() {
         if (typeof XLSX === 'undefined') {
             alert('La librería SheetJS aún se está cargando. Por favor intente en unos segundos.');
@@ -993,13 +1009,25 @@
         }
 
         const fMarca = document.getElementById('filtro-marca')?.value || 'ALL';
-        const rows = [];
-        rows.push([
-            "No. OT", "Marca", "No. Orden Marca", "Fecha Ingreso", "Cliente",
-            "Descripción del Producto", "Modelo / RMS", "Serie del Equipo",
+        const dMes = parseInt(document.getElementById('filtro-desde-mes')?.value || 1);
+        const dAnio = parseInt(document.getElementById('filtro-desde-anio')?.value || 2026);
+        const hMes = parseInt(document.getElementById('filtro-hasta-mes')?.value || 8);
+        const hAnio = parseInt(document.getElementById('filtro-hasta-anio')?.value || 2026);
+
+        const rows = [
+            ["SILVA INTERNACIONAL S.A."],
+            ["AUDITORÍA DETALLADA DE CASOS DE GARANTÍA POR MARCA"],
+            [`Período: ${MESES_NOMBRES[dMes]} ${dAnio} a ${MESES_NOMBRES[hMes]} ${hAnio}   |   Marca: ${fMarca === 'ALL' ? 'Todas las Marcas' : fMarca}   |   Total Casos: ${filteredDetalleRecords.length.toLocaleString()}   |   Criterio: Casos de Garantía (Excluye Servicios)`],
+            [] // Espaciado
+        ];
+
+        const headers = [
+            "No. OT", "Marca", "No. Orden Marca", "Fecha Ingreso",
+            "Cliente", "Descripción del Producto", "Modelo", "Serie del Equipo",
             "Categoría", "Tipo de Garantía", "Fecha Diagnóstico", "Días Diagnóstico",
-            "Fecha Cierre", "Días Cierre", "Estatus"
-        ]);
+            "Fecha Cierre", "Días Cierre"
+        ];
+        rows.push(headers);
 
         filteredDetalleRecords.forEach(r => {
             rows.push([
@@ -1009,24 +1037,103 @@
                 r.fecha || "",
                 r.cliente || "",
                 r.descripcion || "",
-                r.modelo || r.rms || "",
+                r.modelo || "",
                 r.serie || "",
                 r.categoria || "",
                 r.tipo_garantia || "",
                 r.fecha_diagnostico || "",
-                r.dias_diagnostico !== null && r.dias_diagnostico !== undefined ? r.dias_diagnostico : "",
+                r.dias_diagnostico !== null && r.dias_diagnostico !== undefined && !isNaN(r.dias_diagnostico) ? parseFloat(r.dias_diagnostico) : "-",
                 r.fecha_cierre || "",
-                r.dias_cierre !== null && r.dias_cierre !== undefined ? r.dias_cierre : "",
-                r.estatus || ""
+                r.dias_cierre !== null && r.dias_cierre !== undefined && !isNaN(r.dias_cierre) ? parseFloat(r.dias_cierre) : "-"
             ]);
         });
 
         const ws = XLSX.utils.aoa_to_sheet(rows);
-        ws['!cols'] = [
-            { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 18 }, { wch: 30 },
-            { wch: 40 }, { wch: 20 }, { wch: 20 }, { wch: 22 }, { wch: 20 },
-            { wch: 18 }, { wch: 14 }, { wch: 18 }, { wch: 14 }, { wch: 15 }
-        ];
+
+        try {
+            applyBannerStyles(ws, headers.length, "SILVA INTERNACIONAL S.A.", "AUDITORÍA DETALLADA DE CASOS DE GARANTÍA POR MARCA", rows[2][0]);
+
+            // Header row (Index 4)
+            for (let c = 0; c < headers.length; c++) {
+                const ref = XLSX.utils.encode_cell({ r: 4, c });
+                if (ws[ref]) {
+                    ws[ref].s = {
+                        font: { name: "Calibri", sz: 10, bold: true, color: { rgb: "FFFFFF" } },
+                        fill: { fgColor: { rgb: "0F2942" } },
+                        alignment: { horizontal: "center", vertical: "center", wrapText: true },
+                        border: EXCEL_STYLES.borderThin
+                    };
+                }
+            }
+
+            // Data rows (Index 5 to rows.length - 1)
+            const rowHeights = [{ hpt: 26 }, { hpt: 20 }, { hpt: 18 }, { hpt: 8 }, { hpt: 26 }];
+            for (let r = 5; r < rows.length; r++) {
+                rowHeights.push({ hpt: 20 });
+                const isOdd = (r % 2 === 1);
+                const bgRow = isOdd ? "F8FAFC" : "FFFFFF";
+
+                for (let c = 0; c < headers.length; c++) {
+                    const ref = XLSX.utils.encode_cell({ r, c });
+                    if (ws[ref]) {
+                        let align = "center";
+                        let fontBold = false;
+                        let fontColor = "0F172A";
+                        let cellBg = bgRow;
+
+                        if (c === 0) { fontBold = true; fontColor = "0F172A"; }
+                        else if (c === 1) { fontBold = true; fontColor = "1E3A8A"; }
+                        else if (c === 2) { fontColor = "334155"; }
+                        else if (c === 4 || c === 5) { align = "left"; }
+                        else if (c === 6) { fontBold = true; fontColor = "0F172A"; }
+                        else if (c === 11) {
+                            align = ws[ref].v === "-" ? "center" : "right";
+                            fontBold = (ws[ref].v !== "-");
+                            fontColor = "047857";
+                            cellBg = isOdd ? "ECFDF5" : "F0FDF4";
+                        }
+                        else if (c === 13) {
+                            align = ws[ref].v === "-" ? "center" : "right";
+                            fontBold = (ws[ref].v !== "-");
+                            fontColor = "7C3AED";
+                            cellBg = isOdd ? "F5F3FF" : "FAF5FF";
+                        }
+
+                        ws[ref].s = {
+                            font: { name: "Calibri", sz: 10, bold: fontBold, color: { rgb: fontColor } },
+                            fill: { fgColor: { rgb: cellBg } },
+                            alignment: { horizontal: align, vertical: "center", wrapText: (c === 5) },
+                            border: EXCEL_STYLES.borderData
+                        };
+                        if (typeof ws[ref].v === 'number') {
+                            ws[ref].z = (c === 11 || c === 13) ? "0.0" : "#,##0";
+                        }
+                    }
+                }
+            }
+
+            ws['!rows'] = rowHeights;
+            ws['!cols'] = [
+                { wch: 12 }, // No. OT
+                { wch: 16 }, // Marca
+                { wch: 22 }, // No. Orden Marca
+                { wch: 18 }, // Fecha Ingreso
+                { wch: 32 }, // Cliente
+                { wch: 44 }, // Descripcion
+                { wch: 24 }, // Modelo (Col G)
+                { wch: 20 }, // Serie
+                { wch: 24 }, // Categoria
+                { wch: 22 }, // Tipo Garantia
+                { wch: 18 }, // Fecha Diag
+                { wch: 16 }, // Dias Diag
+                { wch: 18 }, // Fecha Cierre
+                { wch: 16 }  // Dias Cierre
+            ];
+
+            ws['!autofilter'] = { ref: `A5:N${rows.length}` };
+        } catch (e) {
+            console.warn("Estilos de exportación omitidos:", e);
+        }
 
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Auditoria_Garantias");
