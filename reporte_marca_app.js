@@ -180,20 +180,39 @@
         const total = filteredRecords.length;
         const csCount = filteredRecords.filter(r => r.unidad === 'CS').length;
         const maeCount = filteredRecords.filter(r => r.unidad === 'MAESTROS').length;
-        const conCasoCount = filteredRecords.filter(r => r.no_caso_marca && r.no_caso_marca.trim().length > 0).length;
 
         document.getElementById('kpi-total').textContent = total.toLocaleString();
         document.getElementById('kpi-cs').textContent = csCount.toLocaleString();
         document.getElementById('kpi-maestros').textContent = maeCount.toLocaleString();
-        document.getElementById('kpi-con-caso').textContent = conCasoCount.toLocaleString();
 
         const csPct = total > 0 ? Math.round((csCount / total) * 100) : 0;
         const maePct = total > 0 ? Math.round((maeCount / total) * 100) : 0;
-        const conCasoPct = total > 0 ? Math.round((conCasoCount / total) * 100) : 0;
 
         document.getElementById('kpi-cs-pct').textContent = `${csPct}% del total`;
         document.getElementById('kpi-maestros-pct').textContent = `${maePct}% del total`;
-        document.getElementById('kpi-con-caso-pct').textContent = `${conCasoCount} de ${total} (${conCasoPct}%) con código registrado`;
+
+        const kpi4Card = document.getElementById('kpi-con-caso');
+        const kpi4Title = kpi4Card.previousElementSibling;
+        const isSpecificNonPortal = (marca !== 'ALL' && marca !== 'LG' && marca !== 'HISENSE');
+
+        if (isSpecificNonPortal) {
+            kpi4Title.textContent = "Control Oficial de Marca";
+            kpi4Card.textContent = "No. de OT";
+            document.getElementById('kpi-con-caso-pct').textContent = "No aplica portal externo (Solo LG e HISENSE)";
+        } else {
+            kpi4Title.textContent = "Con No. Orden Marca";
+            const portalRecords = filteredRecords.filter(r => r.marca === 'LG' || r.marca === 'HISENSE');
+            const conCasoCount = portalRecords.filter(r => r.no_caso_marca && r.no_caso_marca.trim().length > 0).length;
+            const portalTotal = portalRecords.length;
+            const conCasoPct = portalTotal > 0 ? Math.round((conCasoCount / portalTotal) * 100) : 0;
+            
+            kpi4Card.textContent = conCasoCount.toLocaleString();
+            if (marca === 'ALL') {
+                document.getElementById('kpi-con-caso-pct').textContent = `${conCasoCount} de ${portalTotal} (${conCasoPct}%) en LG / HISENSE`;
+            } else {
+                document.getElementById('kpi-con-caso-pct').textContent = `${conCasoCount} de ${total} (${conCasoPct}%) con código de portal`;
+            }
+        }
 
         const dMesNombre = MESES_NOMBRES[dMes] || '';
         const hMesNombre = MESES_NOMBRES[hMes] || '';
@@ -258,12 +277,16 @@
                 `;
             }
 
-            // No. Orden Marca
+            // No. Orden Marca (Tratamiento diferenciado: solo LG e HISENSE tienen orden de fábrica)
             let marcaCasoCell = '';
+            const isPortalBrand = (r.marca === 'LG' || r.marca === 'HISENSE');
+
             if (r.no_caso_marca && r.no_caso_marca.trim().length > 0) {
                 marcaCasoCell = `<span class="badge badge-has-case font-mono">${r.no_caso_marca}</span>`;
+            } else if (isPortalBrand) {
+                marcaCasoCell = `<span class="badge badge-no-case">Pendiente Portal</span>`;
             } else {
-                marcaCasoCell = `<span class="badge badge-no-case">Pendiente</span>`;
+                marcaCasoCell = `<span class="text-slate-500 text-xs italic">N/A (Solo OT)</span>`;
             }
 
             // Fecha
@@ -312,20 +335,27 @@
         const hastaMes = MESES_NOMBRES[document.getElementById('filtro-hasta-mes').value] || '';
 
         // Estructura del reporte exactamente como lo solicitó el usuario
-        const dataRows = filteredRecords.map((r, index) => ({
-            "No.": index + 1,
-            "Unidad de Negocio": r.unidad,
-            "No. Nuestra Orden (OT)": r.ot,
-            "No. Orden Marca / Caso": r.no_caso_marca || "Pendiente",
-            "Fecha de Ingreso": r.fecha || `${r.mes} ${r.anio}`,
-            "Nombre del Cliente": r.cliente || "",
-            "Descripción del Producto": r.descripcion || "",
-            "Modelo / RMS": r.modelo || r.rms || "",
-            "Serie del Equipo": r.serie || "",
-            "Tipo de Garantía / Estado": r.tipo_garantia || "",
-            "Marca": r.marca || "",
-            "Link OT Digital": r.link || ""
-        }));
+        const dataRows = filteredRecords.map((r, index) => {
+            const isPortal = (r.marca === 'LG' || r.marca === 'HISENSE');
+            let casoTexto = r.no_caso_marca || '';
+            if (!casoTexto) {
+                casoTexto = isPortal ? "Pendiente en Portal" : "N/A";
+            }
+            return {
+                "No.": index + 1,
+                "Unidad de Negocio": r.unidad,
+                "No. Nuestra Orden (OT)": r.ot,
+                "No. Orden Marca / Caso": casoTexto,
+                "Fecha de Ingreso": r.fecha || `${r.mes} ${r.anio}`,
+                "Nombre del Cliente": r.cliente || "",
+                "Descripción del Producto": r.descripcion || "",
+                "Modelo / RMS": r.modelo || r.rms || "",
+                "Serie del Equipo": r.serie || "",
+                "Tipo de Garantía / Estado": r.tipo_garantia || "",
+                "Marca": r.marca || "",
+                "Link OT Digital": r.link || ""
+            };
+        });
 
         // Crear hoja de cálculo SheetJS
         const ws = XLSX.utils.json_to_sheet(dataRows);
