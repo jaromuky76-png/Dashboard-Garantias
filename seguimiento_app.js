@@ -122,12 +122,12 @@ function renderTable() {
         
         const marca = (t.marca || '').toUpperCase();
         const isAuthorized = AUTHORIZED_BRANDS.some(b => marca.includes(b));
-        const marcaHtml = isAuthorized ? `<span class="text-white font-semibold">${marca}</span>` : marca;
+        const marcaHtml = isAuthorized ? `<span class="text-slate-900 dark:text-white font-bold">${marca}</span>` : `<span class="text-slate-700 dark:text-slate-300 font-medium">${marca}</span>`;
         
         // Calculate days transcurridos (Días transcurridos) and check warning (>30 days)
         let diasTranscurridos = '-';
-        let diasHtml = '<span class="text-slate-500">-</span>';
-        let rowClass = 'hover:bg-slate-800/50';
+        let diasHtml = '<span class="text-slate-400 dark:text-slate-500">-</span>';
+        let rowClass = 'hover:bg-purple-50/70 dark:hover:bg-slate-800/50';
         
         if (t.fecha_ingreso) {
             const fIngreso = new Date(t.fecha_ingreso);
@@ -142,13 +142,13 @@ function renderTable() {
                 
                 if (t.estado !== 'Reclamado/Cerrado') {
                     if (diffDays > 30) {
-                        diasHtml = `<span class="badge bg-red-500/20 text-red-400 font-bold border border-red-500/30 flex items-center gap-1 w-fit animate-pulse">⚠️ ${diasTranscurridos} d</span>`;
-                        rowClass = 'bg-red-950/20 border-l-2 border-red-500 hover:bg-red-950/30';
+                        diasHtml = `<span class="badge bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400 font-bold border border-red-200 dark:border-red-500/30 flex items-center gap-1 w-fit animate-pulse">⚠️ ${diasTranscurridos} d</span>`;
+                        rowClass = 'bg-red-50/70 dark:bg-red-950/20 border-l-4 border-red-500 hover:bg-red-100/70 dark:hover:bg-red-950/30';
                     } else {
-                        diasHtml = `<span class="text-slate-200 font-semibold">${diasTranscurridos} d</span>`;
+                        diasHtml = `<span class="text-slate-700 dark:text-slate-200 font-semibold">${diasTranscurridos} d</span>`;
                     }
                 } else {
-                    diasHtml = `<span class="text-slate-500 text-xs">${diasTranscurridos} d (Cerrado)</span>`;
+                    diasHtml = `<span class="text-slate-400 dark:text-slate-500 text-xs">${diasTranscurridos} d (Cerrado)</span>`;
                 }
             }
         }
@@ -156,14 +156,14 @@ function renderTable() {
         // Close action button
         let btnAcciones = `
             <button onclick="openModal('${t.unidad_negocio}', '${t.ot}')" 
-                    class="text-xs bg-slate-700 hover:bg-primary text-white px-3 py-1.5 rounded transition-colors">
+                    class="text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-purple-600 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-white font-bold px-2.5 py-1 rounded-lg transition-colors cursor-pointer">
                 Actualizar
             </button>
         `;
         if (t.estado !== 'Reclamado/Cerrado') {
             btnAcciones += `
                 <button onclick="quickClose('${t.unidad_negocio}', '${t.ot}')" 
-                        class="text-xs bg-emerald-700/80 hover:bg-emerald-600 text-white px-2 py-1.5 rounded transition-colors ml-1">
+                        class="text-xs bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold px-2.5 py-1 rounded-lg transition-all ml-1.5 shadow-sm cursor-pointer">
                     Cerrar
                 </button>
             `;
@@ -171,12 +171,12 @@ function renderTable() {
         
         html += `
             <tr class="${rowClass} transition-colors">
-                <td class="font-medium text-slate-300">${t.unidad_negocio || ''}</td>
-                <td class="font-bold text-primary">${t.ot || ''}</td>
+                <td class="font-bold text-slate-500 dark:text-slate-400">${t.unidad_negocio || ''}</td>
+                <td class="font-black text-purple-600 dark:text-purple-400">${t.ot || ''}</td>
                 <td>${marcaHtml}</td>
-                <td class="text-slate-300 font-medium">${t.no_caso_portal || '-'}</td>
-                <td class="max-w-[200px] truncate" title="${t.descripcion}">${t.descripcion || ''}</td>
-                <td>${t.fecha_ingreso || ''}</td>
+                <td class="text-slate-700 dark:text-slate-300 font-mono text-xs">${t.no_caso_portal || '-'}</td>
+                <td class="text-slate-700 dark:text-slate-300 max-w-[200px] truncate" title="${t.descripcion}">${t.descripcion || ''}</td>
+                <td class="text-slate-500 dark:text-slate-400 whitespace-nowrap">${t.fecha_ingreso || ''}</td>
                 <td>${diasHtml}</td>
                 <td><span class="badge ${badgeClass}">${t.estado}</span></td>
                 <td>
@@ -189,9 +189,9 @@ function renderTable() {
     }
     
     if (filteredData.length > maxRender) {
-        html += `<tr><td colspan="8" class="text-center text-slate-400 italic py-4">Mostrando ${maxRender} de ${filteredData.length} resultados. Usa el buscador para refinar.</td></tr>`;
+        html += `<tr><td colspan="9" class="text-center text-slate-400 dark:text-slate-500 italic py-6">Mostrando ${maxRender} de ${filteredData.length} resultados. Usa el buscador para refinar.</td></tr>`;
     } else if (filteredData.length === 0) {
-        html += `<tr><td colspan="8" class="text-center text-slate-400 italic py-4">No se encontraron trámites con los filtros actuales.</td></tr>`;
+        html += `<tr><td colspan="9" class="text-center text-slate-400 dark:text-slate-500 italic py-6">No se encontraron trámites con los filtros actuales.</td></tr>`;
     }
     
     tablaBody.innerHTML = html;

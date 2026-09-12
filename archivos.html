@@ -1,9 +1,24 @@
 <!DOCTYPE html>
-<html lang="es" class="dark">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Archivos Resguardados - OT</title>
+    <!-- Script de inicialización de tema anti-parpadeo -->
+    <script>
+        (function() {
+            var saved = localStorage.getItem('theme_garantias');
+            if (saved === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        })();
+    </script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -26,38 +41,71 @@
         }
     </script>
     <style>
+        :root {
+            --bg-page: #f8fafc;
+            --bg-card: #ffffff;
+            --bg-input: #ffffff;
+            --border-card: #e2e8f0;
+            --border-input: #cbd5e1;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --card-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
+            --th-bg: #f1f5f9;
+            --th-text: #475569;
+            --td-text: #334155;
+            --table-border: #f1f5f9;
+        }
+
+        html.dark {
+            --bg-page: #0b0f19;
+            --bg-card: #131b2e;
+            --bg-input: #1a243b;
+            --border-card: #232f48;
+            --border-input: #2d3b59;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.35);
+            --th-bg: rgba(0, 0, 0, 0.2);
+            --th-text: #94a3b8;
+            --td-text: #cbd5e1;
+            --table-border: rgba(255, 255, 255, 0.05);
+        }
+
         body {
-            background-color: #0f172a;
-            color: #f8fafc;
+            background-color: var(--bg-page);
+            color: var(--text-main);
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            transition: background-color 0.2s ease, color 0.2s ease;
         }
         .glass-card {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: var(--bg-card);
+            border: 1px solid var(--border-card);
             border-radius: 1rem;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+            box-shadow: var(--card-shadow);
         }
         table { border-collapse: separate; border-spacing: 0; width: 100%; }
-        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--table-border); }
         th {
-            background-color: rgba(0,0,0,0.2);
-            font-weight: 600;
-            color: #94a3b8;
+            background-color: var(--th-bg);
+            font-weight: 700;
+            color: var(--th-text);
             text-transform: uppercase;
-            font-size: 0.75rem;
+            font-size: 0.72rem;
             letter-spacing: 0.05em;
         }
-        td { color: #cbd5e1; }
+        td { color: var(--td-text); }
         .badge {
-            padding: 4px 8px;
+            padding: 3px 8px;
             border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 600;
+            font-size: 0.72rem;
+            font-weight: 700;
         }
-        .badge-cs { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
-        .badge-maestros { background: rgba(139, 92, 246, 0.2); color: #c084fc; }
-        .badge-active { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .badge-cs { background: rgba(59, 130, 246, 0.12); color: #2563eb; border: 1px solid rgba(59, 130, 246, 0.25); }
+        .dark .badge-cs { color: #93c5fd; }
+        .badge-maestros { background: rgba(139, 92, 246, 0.12); color: #7c3aed; border: 1px solid rgba(139, 92, 246, 0.25); }
+        .dark .badge-maestros { color: #c084fc; }
+        .badge-active { background: rgba(16, 185, 129, 0.12); color: #059669; border: 1px solid rgba(16, 185, 129, 0.25); }
+        .dark .badge-active { color: #34d399; }
         
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
@@ -68,44 +116,69 @@
         }
     </style>
 </head>
-<body class="min-h-screen p-6">
+<body class="min-h-screen p-4 md:p-6">
     <div class="max-w-7xl mx-auto space-y-6 animate-fadeIn">
         
         <!-- Header -->
-        <header class="flex justify-between items-center mb-8">
+        <header class="glass-card p-6 flex flex-wrap justify-between items-center gap-4">
             <div>
-                <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300">
+                        SILVA INTERNACIONAL S.A.
+                    </span>
+                    <span class="text-xs text-slate-400 font-medium">• Centro de Garantías</span>
+                </div>
+                <h1 class="text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
                     Archivos de OTs Resguardados
                 </h1>
-                <p class="text-slate-400 mt-1">Historial y estado de los archivos Excel evaluados en el sistema</p>
-                <nav class="flex space-x-4 mt-4">
-                    <a href="index.html" class="text-slate-400 hover:text-white transition-colors pb-2">Garantías</a>
-                    <a href="servicio.html" class="text-slate-400 hover:text-white transition-colors pb-2">Servicios</a>
-                    <a href="repuestos.html" class="text-slate-400 hover:text-white transition-colors pb-2">Sugerido de Compras</a>
-                    <a href="seguimiento.html" class="text-slate-400 hover:text-white transition-colors pb-2">Seguimiento Trámites</a>
-                    <a href="reporte_marca.html" class="text-slate-400 hover:text-white transition-colors pb-2">Reporte Marcas</a>
-                    <a href="archivos.html" class="text-indigo-400 font-semibold border-b-2 border-indigo-400 pb-2">Archivos Resguardados</a>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Historial y estado de los archivos Excel evaluados en el sistema</p>
+                
+                <nav class="flex flex-wrap gap-2 text-xs font-semibold mt-4">
+                    <a href="index.html" class="px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Garantías</a>
+                    <a href="servicio.html" class="px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Servicios</a>
+                    <a href="repuestos.html" class="px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Sugerido de Compras</a>
+                    <a href="seguimiento.html" class="px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Seguimiento Trámites</a>
+                    <a href="reporte_marca.html" class="px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Reporte Marcas</a>
+                    <a href="archivos.html" class="px-3.5 py-1.5 rounded-lg bg-indigo-600 text-white font-bold shadow-sm">Archivos Resguardados</a>
                 </nav>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <!-- Segmented Selector de Tema -->
+                <div class="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 shadow-sm" role="group" aria-label="Selector de Tema">
+                    <button type="button" onclick="setTheme('light')" id="btn-theme-light" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer" title="Activar Modo Claro">
+                        <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                        </svg>
+                        <span>Claro</span>
+                    </button>
+                    <button type="button" onclick="setTheme('dark')" id="btn-theme-dark" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer" title="Activar Modo Oscuro">
+                        <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                        </svg>
+                        <span>Oscuro</span>
+                    </button>
+                </div>
             </div>
         </header>
 
         <!-- KPIs -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div class="glass-card p-6 border-l-4 border-l-indigo-500">
-                <h3 class="text-slate-400 text-sm font-semibold uppercase tracking-wider mb-2">Total Archivos</h3>
-                <p id="kpi-total-files" class="text-3xl font-bold text-white">0</p>
+                <h3 class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Total Archivos</h3>
+                <p id="kpi-total-files" class="text-3xl font-black text-slate-900 dark:text-white">0</p>
             </div>
             <div class="glass-card p-6 border-l-4 border-l-blue-500">
-                <h3 class="text-slate-400 text-sm font-semibold uppercase tracking-wider mb-2">Centro de Servicios (CS)</h3>
-                <p id="kpi-cs-files" class="text-3xl font-bold text-blue-400">0</p>
+                <h3 class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Centro de Servicios (CS)</h3>
+                <p id="kpi-cs-files" class="text-3xl font-black text-blue-600 dark:text-blue-400">0</p>
             </div>
             <div class="glass-card p-6 border-l-4 border-l-purple-500">
-                <h3 class="text-slate-400 text-sm font-semibold uppercase tracking-wider mb-2">Maestros</h3>
-                <p id="kpi-maestros-files" class="text-3xl font-bold text-purple-400">0</p>
+                <h3 class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Maestros</h3>
+                <p id="kpi-maestros-files" class="text-3xl font-black text-purple-600 dark:text-purple-400">0</p>
             </div>
             <div class="glass-card p-6 border-l-4 border-l-teal-500">
-                <h3 class="text-slate-400 text-sm font-semibold uppercase tracking-wider mb-2">Espacio Ocupado</h3>
-                <p id="kpi-total-size" class="text-3xl font-bold text-teal-400">0 KB</p>
+                <h3 class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Espacio Ocupado</h3>
+                <p id="kpi-total-size" class="text-3xl font-black text-teal-600 dark:text-teal-400">0 KB</p>
             </div>
         </div>
 
@@ -114,13 +187,13 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <!-- Search -->
                 <div class="md:col-span-2">
-                    <p class="text-xs text-slate-400 uppercase font-semibold mb-1">Buscar por nombre</p>
-                    <input type="text" id="search-filename" placeholder="Ej. ABRIL, 2025..." class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                    <p class="text-xs text-slate-500 dark:text-slate-400 uppercase font-bold mb-1">Buscar por nombre</p>
+                    <input type="text" id="search-filename" placeholder="Ej. ABRIL, 2025..." class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500">
                 </div>
                 <!-- Unit Filter -->
                 <div>
-                    <p class="text-xs text-slate-400 uppercase font-semibold mb-1">Unidad de Negocio</p>
-                    <select id="filter-unit" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                    <p class="text-xs text-slate-500 dark:text-slate-400 uppercase font-bold mb-1">Unidad de Negocio</p>
+                    <select id="filter-unit" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 cursor-pointer">
                         <option value="ALL">Todas</option>
                         <option value="CS">Centro de Servicios (CS)</option>
                         <option value="MAESTROS">Maestros</option>
@@ -128,8 +201,8 @@
                 </div>
                 <!-- Year Filter -->
                 <div>
-                    <p class="text-xs text-slate-400 uppercase font-semibold mb-1">Año</p>
-                    <select id="filter-year" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                    <p class="text-xs text-slate-500 dark:text-slate-400 uppercase font-bold mb-1">Año</p>
+                    <select id="filter-year" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 cursor-pointer">
                         <option value="ALL">Todos los años</option>
                     </select>
                 </div>
@@ -138,12 +211,12 @@
 
         <!-- File List Table -->
         <div class="glass-card overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-700/50 flex justify-between items-center bg-slate-850">
-                <h2 class="text-lg font-bold text-white flex items-center">
-                    <svg class="w-5 h-5 mr-2 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+            <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700/50 flex justify-between items-center bg-slate-50/70 dark:bg-slate-800/40">
+                <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                     Historial de Archivos Guardados
                 </h2>
-                <span class="text-xs text-slate-400" id="table-row-count">Mostrando 0 de 0 archivos</span>
+                <span class="text-xs text-slate-500 dark:text-slate-400 font-medium" id="table-row-count">Mostrando 0 de 0 archivos</span>
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full">
@@ -160,7 +233,7 @@
                     </thead>
                     <tbody id="files-table-body">
                         <tr>
-                            <td colspan="7" class="text-center py-8 text-slate-500">Cargando lista de archivos...</td>
+                            <td colspan="7" class="text-center py-8 text-slate-400">Cargando lista de archivos...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -171,6 +244,37 @@
 
     <!-- Data Preloading script generated by Python -->
     <script src="data.js"></script>
+
+    <!-- Script de Gestión de Tema -->
+    <script>
+        function updateThemeUI() {
+            var isDark = document.documentElement.classList.contains('dark');
+            var btnLight = document.getElementById('btn-theme-light');
+            var btnDark = document.getElementById('btn-theme-dark');
+            if (!btnLight || !btnDark) return;
+            
+            if (isDark) {
+                btnDark.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer bg-indigo-600 text-white shadow-sm';
+                btnLight.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer text-slate-400 hover:text-slate-200';
+            } else {
+                btnLight.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer bg-white text-indigo-600 shadow-sm border border-slate-200/80';
+                btnDark.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer text-slate-500 hover:text-slate-900';
+            }
+        }
+
+        function setTheme(mode) {
+            if (mode === 'dark') {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme_garantias', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme_garantias', 'light');
+            }
+            updateThemeUI();
+        }
+
+        document.addEventListener('DOMContentLoaded', updateThemeUI);
+    </script>
 
     <!-- Page Controller Logic -->
     <script>
@@ -244,7 +348,7 @@
             if (filtered.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="7" class="text-center py-12 text-slate-500">
+                        <td colspan="7" class="text-center py-12 text-slate-400 dark:text-slate-500">
                             No se encontraron archivos con los filtros seleccionados
                         </td>
                     </tr>
@@ -262,13 +366,13 @@
                     : `${f.tamano_kb.toFixed(1)} KB`;
 
                 return `
-                    <tr class="hover:bg-slate-800/50 transition-colors">
+                    <tr class="hover:bg-indigo-50/70 dark:hover:bg-slate-800/50 transition-colors">
                         <td class="py-3 px-4">${unitBadge}</td>
-                        <td class="py-3 px-4 text-slate-300 font-semibold">${f.anio}</td>
-                        <td class="py-3 px-4 text-indigo-300 font-semibold">${f.mes}</td>
-                        <td class="py-3 px-4 text-white font-medium break-all max-w-xs md:max-w-md" title="${f.nombre}">${f.nombre}</td>
-                        <td class="py-3 px-4 text-slate-400">${sizeText}</td>
-                        <td class="py-3 px-4 text-slate-400 text-sm">${f.modificado}</td>
+                        <td class="py-3 px-4 text-slate-700 dark:text-slate-300 font-bold">${f.anio}</td>
+                        <td class="py-3 px-4 text-indigo-600 dark:text-indigo-400 font-bold">${f.mes}</td>
+                        <td class="py-3 px-4 text-slate-900 dark:text-white font-medium break-all max-w-xs md:max-w-md" title="${f.nombre}">${f.nombre}</td>
+                        <td class="py-3 px-4 text-slate-500 dark:text-slate-400 font-mono text-xs">${sizeText}</td>
+                        <td class="py-3 px-4 text-slate-500 dark:text-slate-400 text-xs">${f.modificado}</td>
                         <td class="py-3 px-4 text-center">
                             <span class="badge badge-active flex items-center justify-center w-max mx-auto">
                                 <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>

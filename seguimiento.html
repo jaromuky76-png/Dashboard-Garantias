@@ -1,9 +1,24 @@
 <!DOCTYPE html>
-<html lang="es" class="dark">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Seguimiento de Trámites - OT</title>
+    <!-- Script de inicialización de tema anti-parpadeo -->
+    <script>
+        (function() {
+            var saved = localStorage.getItem('theme_garantias');
+            if (saved === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        })();
+    </script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -26,17 +41,49 @@
     </script>
     <!-- Custom CSS -->
     <style>
+        :root {
+            --bg-page: #f8fafc;
+            --bg-card: #ffffff;
+            --bg-input: #ffffff;
+            --border-card: #e2e8f0;
+            --border-input: #cbd5e1;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --card-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
+            --th-bg: #f1f5f9;
+            --th-text: #475569;
+            --td-text: #334155;
+            --table-border: #f1f5f9;
+            --modal-bg: #ffffff;
+        }
+
+        html.dark {
+            --bg-page: #0b0f19;
+            --bg-card: #131b2e;
+            --bg-input: #1a243b;
+            --border-card: #232f48;
+            --border-input: #2d3b59;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.35);
+            --th-bg: rgba(0, 0, 0, 0.2);
+            --th-text: #94a3b8;
+            --td-text: #cbd5e1;
+            --table-border: rgba(255, 255, 255, 0.05);
+            --modal-bg: #131b2e;
+        }
+
         body {
-            background-color: #0f172a;
-            color: #f8fafc;
+            background-color: var(--bg-page);
+            color: var(--text-main);
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            transition: background-color 0.2s ease, color 0.2s ease;
         }
         .glass-card {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: var(--bg-card);
+            border: 1px solid var(--border-card);
             border-radius: 1rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            box-shadow: var(--card-shadow);
         }
         table {
             border-collapse: separate;
@@ -44,86 +91,116 @@
             width: 100%;
         }
         th, td {
-            padding: 1rem;
+            padding: 12px 14px;
             text-align: left;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid var(--table-border);
         }
         th {
-            background-color: rgba(0, 0, 0, 0.2);
-            font-weight: 600;
-            color: #94a3b8;
+            background-color: var(--th-bg);
+            font-weight: 700;
+            color: var(--th-text);
             text-transform: uppercase;
-            font-size: 0.75rem;
+            font-size: 0.72rem;
             letter-spacing: 0.05em;
         }
+        td { color: var(--td-text); }
         tr:last-child td { border-bottom: none; }
         .badge {
-            padding: 0.25rem 0.75rem;
+            padding: 0.25rem 0.65rem;
             border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 600;
+            font-size: 0.72rem;
+            font-weight: 700;
         }
-        .badge-Pendiente { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
-        .badge-Abierto { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
-        .badge-Cerrado { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .badge-Pendiente { background: rgba(59, 130, 246, 0.12); color: #2563eb; border: 1px solid rgba(59, 130, 246, 0.25); }
+        .dark .badge-Pendiente { color: #60a5fa; }
+        .badge-Abierto { background: rgba(245, 158, 11, 0.12); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.25); }
+        .dark .badge-Abierto { color: #fbbf24; }
+        .badge-Cerrado { background: rgba(16, 185, 129, 0.12); color: #059669; border: 1px solid rgba(16, 185, 129, 0.25); }
+        .dark .badge-Cerrado { color: #34d399; }
         
         /* Modal */
         .modal {
             display: none; 
             position: fixed; z-index: 1000; left: 0; top: 0;
             width: 100%; height: 100%; overflow: auto;
-            background-color: rgba(0,0,0,0.5);
+            background-color: rgba(15, 23, 42, 0.6);
             backdrop-filter: blur(5px);
         }
         .modal-content {
-            background-color: #1e293b;
+            background-color: var(--modal-bg);
             margin: 5% auto;
             padding: 2rem;
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid var(--border-card);
             width: 90%; max-width: 500px;
             border-radius: 1rem;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
         }
     </style>
 </head>
-<body class="min-h-screen p-6">
+<body class="min-h-screen p-4 md:p-6">
     <div class="max-w-7xl mx-auto space-y-6">
         
         <!-- Header -->
-        <header class="flex justify-between items-center glass-card p-6">
+        <header class="glass-card p-6 flex flex-wrap justify-between items-center gap-4">
             <div>
-                <h1 class="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                    Dashboard Estado de OT
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300">
+                        SILVA INTERNACIONAL S.A.
+                    </span>
+                    <span class="text-xs text-slate-400 font-medium">• Centro de Garantías</span>
+                </div>
+                <h1 class="text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+                    Seguimiento de Trámites
                 </h1>
-                <p class="text-slate-400 mt-1">Seguimiento de Trámites de Garantía</p>
-                <nav class="mt-4 flex gap-4">
-                    <a href="index.html" class="text-slate-400 hover:text-white transition-colors pb-2">Garantías</a>
-                    <a href="servicio.html" class="text-slate-400 hover:text-white transition-colors pb-2">Servicios</a>
-                    <a href="repuestos.html" class="text-slate-400 hover:text-white transition-colors pb-2">Sugerido de Compras</a>
-                    <a href="seguimiento.html" class="text-primary font-semibold border-b-2 border-primary pb-2">Seguimiento Trámites</a>
-                    <a href="reporte_marca.html" class="text-slate-400 hover:text-white transition-colors pb-2">Reporte Marcas</a>
-                    <a href="archivos.html" class="text-slate-400 hover:text-white transition-colors pb-2">Archivos Resguardados</a>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Control de Órdenes de Trabajo y Portal de Garantías</p>
+                
+                <nav class="flex flex-wrap gap-2 text-xs font-semibold mt-4">
+                    <a href="index.html" class="px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Garantías</a>
+                    <a href="servicio.html" class="px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Servicios</a>
+                    <a href="repuestos.html" class="px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Sugerido de Compras</a>
+                    <a href="seguimiento.html" class="px-3.5 py-1.5 rounded-lg bg-purple-600 text-white font-bold shadow-sm">Seguimiento Trámites</a>
+                    <a href="reporte_marca.html" class="px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Reporte Marcas</a>
+                    <a href="archivos.html" class="px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Archivos Resguardados</a>
                 </nav>
             </div>
-            <div class="text-right">
-                <p class="text-sm text-slate-400">Total Trámites Activos</p>
-                <p class="text-2xl font-bold" id="kpi-activos">0</p>
+
+            <div class="flex items-center gap-4">
+                <!-- Segmented Selector de Tema -->
+                <div class="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 shadow-sm" role="group" aria-label="Selector de Tema">
+                    <button type="button" onclick="setTheme('light')" id="btn-theme-light" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer" title="Activar Modo Claro">
+                        <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                        </svg>
+                        <span>Claro</span>
+                    </button>
+                    <button type="button" onclick="setTheme('dark')" id="btn-theme-dark" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer" title="Activar Modo Oscuro">
+                        <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                        </svg>
+                        <span>Oscuro</span>
+                    </button>
+                </div>
+
+                <div class="glass-card px-4 py-3 border-l-4 border-l-purple-500 min-w-[140px] text-right">
+                    <p class="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold tracking-wider">Trámites Activos</p>
+                    <p class="text-2xl font-black text-purple-600 dark:text-purple-400" id="kpi-activos">0</p>
+                </div>
             </div>
         </header>
 
         <!-- Filtros -->
         <div class="glass-card p-6 flex flex-wrap gap-4 items-end">
             <div class="flex-1 min-w-[200px]">
-                <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Unidad de Negocio</label>
-                <select id="filtro-unidad" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-primary transition-colors text-white">
+                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">Unidad de Negocio</label>
+                <select id="filtro-unidad" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-purple-500 transition-colors cursor-pointer">
                     <option value="ALL">Todas las Unidades</option>
                     <option value="CS">Centro de Servicios (CS)</option>
                     <option value="MAESTROS">Maestros</option>
                 </select>
             </div>
             <div class="flex-1 min-w-[200px]">
-                <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Estado</label>
-                <select id="filtro-estado" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-primary transition-colors text-white">
+                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">Estado</label>
+                <select id="filtro-estado" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-purple-500 transition-colors cursor-pointer">
                     <option value="ALL">Todos los Estados</option>
                     <option value="Pendiente de Subir">Pendiente de Subir</option>
                     <option value="Subido a Portal (Abierto)">Subido a Portal (Abierto)</option>
@@ -131,8 +208,8 @@
                 </select>
             </div>
             <div class="flex-1 min-w-[200px]">
-                <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Marcas</label>
-                <select id="filtro-marca" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-primary transition-colors text-white">
+                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">Marcas</label>
+                <select id="filtro-marca" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-purple-500 transition-colors cursor-pointer">
                     <option value="ALL">Todas las Marcas</option>
                     <option value="AUTHORIZED">👉 Solo Marcas Autorizadas (Grupo)</option>
                     <option value="LG">LG</option>
@@ -145,26 +222,26 @@
                 </select>
             </div>
             <div class="flex-1 min-w-[120px]">
-                <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Año de OT</label>
-                <select id="filtro-anio" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-primary transition-colors text-white">
+                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">Año de OT</label>
+                <select id="filtro-anio" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-purple-500 transition-colors cursor-pointer">
                     <option value="ALL">Todos los Años</option>
                     <!-- Opciones generadas por JS -->
                 </select>
             </div>
             <div class="flex-1 min-w-[150px]">
-                <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Mes de OT</label>
-                <select id="filtro-mes" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-primary transition-colors text-white">
+                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">Mes de OT</label>
+                <select id="filtro-mes" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-purple-500 transition-colors cursor-pointer">
                     <option value="ALL">Todos los Meses</option>
                     <!-- Opciones generadas por JS -->
                 </select>
             </div>
             <div class="flex-1 min-w-[200px]">
-                <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Buscador OT / Caso</label>
-                <input type="text" id="buscador-ot" placeholder="Buscar OT o Ref. de caso..." class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-primary transition-colors text-white">
+                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">Buscador OT / Caso</label>
+                <input type="text" id="buscador-ot" placeholder="Buscar OT o Ref. de caso..." class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-purple-500 transition-colors">
             </div>
             <div>
-                <button onclick="exportToCSV()" class="bg-green-600 hover:bg-green-500 text-white px-4 py-2.5 rounded-lg transition-colors font-medium flex items-center gap-2 h-full">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <button onclick="exportToCSV()" class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white px-4 py-2.5 rounded-xl transition-all font-bold text-xs flex items-center gap-2 shadow-sm cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
                     </svg>
                     Exportar Reporte
@@ -189,7 +266,7 @@
                             <th>Acciones</th>
                         </tr>
                     </thead>
-                    <tbody id="tabla-body" class="text-sm">
+                    <tbody id="tabla-body" class="text-xs">
                         <!-- Llenado con JS -->
                     </tbody>
                 </table>
@@ -201,45 +278,76 @@
     <!-- Edit Modal -->
     <div id="editModal" class="modal">
         <div class="modal-content relative">
-            <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">&times;</button>
-            <h2 class="text-xl font-bold mb-4" id="modal-title">Actualizar Trámite</h2>
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 dark:hover:text-white text-xl font-bold">&times;</button>
+            <h2 class="text-xl font-black text-slate-900 dark:text-white mb-4" id="modal-title">Actualizar Trámite</h2>
             <form id="editForm" class="space-y-4">
                 <input type="hidden" id="edit-unidad">
                 <input type="hidden" id="edit-ot">
                 
                 <div>
-                    <label class="block text-sm font-medium text-slate-400 mb-1">Estado del Trámite</label>
-                    <select id="edit-estado" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white">
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Estado del Trámite</label>
+                    <select id="edit-estado" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-purple-500">
                         <option value="Pendiente de Subir">Pendiente de Subir</option>
                         <option value="Subido a Portal (Abierto)">Subido a Portal (Abierto)</option>
                         <option value="Reclamado/Cerrado">Reclamado/Cerrado</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-400 mb-1">No. Caso / Referencia en Portal de Marca</label>
-                    <input type="text" id="edit-caso" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white" placeholder="Ej. LGE-2026-00012">
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">No. Caso / Referencia en Portal de Marca</label>
+                    <input type="text" id="edit-caso" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-purple-500" placeholder="Ej. LGE-2026-00012">
                 </div>
                 <div class="flex gap-4">
                     <div class="flex-1">
-                        <label class="block text-sm font-medium text-slate-400 mb-1">Fecha Cierre Oficial</label>
-                        <input type="date" id="edit-cierre" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white">
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Fecha Cierre Oficial</label>
+                        <input type="date" id="edit-cierre" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-purple-500">
                     </div>
                     <div class="flex-1">
-                        <label class="block text-sm font-medium text-slate-400 mb-1">Monto Mano de Obra ($)</label>
-                        <input type="number" step="0.01" id="edit-monto" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white" placeholder="0.00">
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Monto Mano de Obra ($)</label>
+                        <input type="number" step="0.01" id="edit-monto" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-purple-500" placeholder="0.00">
                     </div>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-400 mb-1">Notas / Comentarios</label>
-                    <textarea id="edit-notas" rows="3" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white" placeholder="Ej. Esperando confirmación de fábrica..."></textarea>
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Notas / Comentarios</label>
+                    <textarea id="edit-notas" rows="3" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-purple-500" placeholder="Ej. Esperando confirmación de fábrica..."></textarea>
                 </div>
                 <div class="pt-4 flex justify-end gap-3">
-                    <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 transition-colors">Cancelar</button>
-                    <button type="submit" class="px-4 py-2 rounded-lg bg-primary hover:bg-blue-600 transition-colors font-medium" id="btn-guardar">Guardar Cambios</button>
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-500 active:scale-95 text-white transition-all shadow-sm cursor-pointer" id="btn-guardar">Guardar Cambios</button>
                 </div>
             </form>
         </div>
     </div>
+
+    <!-- Script de Gestión de Tema -->
+    <script>
+        function updateThemeUI() {
+            var isDark = document.documentElement.classList.contains('dark');
+            var btnLight = document.getElementById('btn-theme-light');
+            var btnDark = document.getElementById('btn-theme-dark');
+            if (!btnLight || !btnDark) return;
+            
+            if (isDark) {
+                btnDark.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer bg-purple-600 text-white shadow-sm';
+                btnLight.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer text-slate-400 hover:text-slate-200';
+            } else {
+                btnLight.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer bg-white text-purple-600 shadow-sm border border-slate-200/80';
+                btnDark.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer text-slate-500 hover:text-slate-900';
+            }
+        }
+
+        function setTheme(mode) {
+            if (mode === 'dark') {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme_garantias', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme_garantias', 'light');
+            }
+            updateThemeUI();
+        }
+
+        document.addEventListener('DOMContentLoaded', updateThemeUI);
+    </script>
 
     <!-- Data Sources with Cache Buster -->
     <script>

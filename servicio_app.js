@@ -129,47 +129,71 @@ function renderChart(brandData) {
     const ctx = document.getElementById('brandChart');
     if (!ctx) return;
     if (brandChartInstance) brandChartInstance.destroy();
+
+    const isDark = document.documentElement.classList.contains('dark');
+    const tickColor = isDark ? '#94a3b8' : '#64748b';
+    const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
+    const legendColor = isDark ? '#e2e8f0' : '#334155';
+
     brandChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: sorted.map(b => b[0]),
-            datasets: [{ label: 'Servicios', data: sorted.map(b => b[1].sum),
-                backgroundColor: 'rgba(20,184,166,0.75)', borderColor: 'rgb(20,184,166)', borderWidth: 1 }]
+            datasets: [{
+                label: 'Servicios',
+                data: sorted.map(b => b[1].sum),
+                backgroundColor: isDark ? 'rgba(20,184,166,0.75)' : 'rgba(13,148,136,0.85)',
+                borderColor: '#0d9488',
+                borderWidth: 1,
+                borderRadius: 4
+            }]
         },
         options: {
-            responsive: true, maintainAspectRatio: false,
+            responsive: true,
+            maintainAspectRatio: false,
             scales: {
-                x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-                y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                x: { ticks: { color: tickColor }, grid: { color: gridColor } },
+                y: { ticks: { color: tickColor }, grid: { color: gridColor } }
             },
-            plugins: { legend: { labels: { color: '#e2e8f0' } }, tooltip: { mode: 'index', intersect: false } }
+            plugins: {
+                legend: { labels: { color: legendColor } },
+                tooltip: { mode: 'index', intersect: false }
+            }
         }
     });
 }
+
+window.refreshBrandChart = function() {
+    if (window.byBrand) renderChart(window.byBrand);
+};
 
 // ── Top Products ──────────────────────────────────────────────────────────────
 function renderTopProducts(filterBrand) {
     const container = document.getElementById('top-products-list');
     if (!window.aggregatedProducts?.length) {
-        container.innerHTML = '<p class="text-slate-500 text-center text-sm py-8">Sin datos...</p>'; return;
+        container.innerHTML = '<p class="text-slate-400 dark:text-slate-500 text-center text-sm py-8">Sin datos...</p>';
+        return;
     }
     let products = window.aggregatedProducts;
     if (filterBrand && filterBrand !== 'ALL') products = products.filter(p => p.marca === filterBrand);
     const top5 = products.slice(0, 5);
-    if (!top5.length) { container.innerHTML = '<p class="text-slate-500 text-center text-sm py-8">No hay datos para esta marca.</p>'; return; }
+    if (!top5.length) {
+        container.innerHTML = '<p class="text-slate-400 dark:text-slate-500 text-center text-sm py-8">No hay datos para esta marca.</p>';
+        return;
+    }
     container.innerHTML = top5.map((p, i) => `
-        <div class="flex items-center space-x-3 p-3 rounded-lg bg-slate-800/50 border border-slate-700/50 hover:bg-slate-700/50 transition-all">
-            <div class="flex-shrink-0 w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold ${i === 0 ? 'text-teal-400' : 'text-slate-400'}">#${i+1}</div>
+        <div class="flex items-center space-x-3 p-3 rounded-xl bg-slate-50/90 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 hover:bg-teal-50/50 dark:hover:bg-slate-700/50 transition-all">
+            <div class="flex-shrink-0 w-8 h-8 rounded-full ${i === 0 ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/60 dark:text-teal-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'} flex items-center justify-center text-xs font-bold">#${i+1}</div>
             <div class="flex-grow min-w-0">
                 <div class="flex justify-between items-start">
-                    <p class="text-xs font-bold text-slate-500 uppercase truncate">${p.marca}</p>
-                    <span class="text-[10px] font-mono text-slate-500">${p.rms}</span>
+                    <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase truncate">${p.marca}</p>
+                    <span class="text-[10px] font-mono text-slate-400 dark:text-slate-500">${p.rms}</span>
                 </div>
-                <p class="text-sm font-medium text-white truncate" title="${p.descripcion}">${p.descripcion}</p>
+                <p class="text-sm font-medium text-slate-900 dark:text-white truncate" title="${p.descripcion}">${p.descripcion}</p>
             </div>
             <div class="flex-shrink-0 text-right">
-                <p class="text-xs font-bold text-white">${p.sum}</p>
-                <p class="text-[9px] text-slate-500 uppercase">Servicios</p>
+                <p class="text-xs font-bold text-slate-900 dark:text-white">${p.sum}</p>
+                <p class="text-[9px] text-slate-400 dark:text-slate-500 uppercase font-semibold">Servicios</p>
             </div>
         </div>`).join('');
 }
@@ -201,7 +225,10 @@ function updateComparator() {
 }
 function renderComparatorCard(containerId, brandName) {
     const container = document.getElementById(containerId);
-    if (!brandName) { container.innerHTML = '<p class="text-slate-500 text-center py-12 italic">Seleccione una marca para comparar...</p>'; return; }
+    if (!brandName) {
+        container.innerHTML = '<p class="text-slate-400 dark:text-slate-500 text-center py-12 italic text-sm">Seleccione una marca para comparar...</p>';
+        return;
+    }
     const data       = window.byBrand[brandName] || { sum: 0 };
     const topProduct = (window.aggregatedProducts || []).find(p => p.marca === brandName);
     const total      = Object.values(window.byBrand || {}).reduce((s,v) => s + v.sum, 0);
@@ -209,29 +236,29 @@ function renderComparatorCard(containerId, brandName) {
     container.innerHTML = `
         <div class="animate-fadeIn">
             <div class="flex justify-between items-center mb-6">
-                <h3 class="text-2xl font-black text-white italic tracking-tighter">${brandName}</h3>
+                <h3 class="text-2xl font-black text-slate-900 dark:text-white italic tracking-tighter">${brandName}</h3>
                 <div class="text-right">
-                    <p class="text-xs text-slate-500 uppercase font-bold">Total Servicios</p>
-                    <p class="text-3xl font-black text-teal-400">${data.sum}</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 uppercase font-bold">Total Servicios</p>
+                    <p class="text-3xl font-black text-teal-600 dark:text-teal-400">${data.sum}</p>
                 </div>
             </div>
             <div class="mb-6">
                 <div class="flex justify-between text-xs mb-1">
-                    <span class="text-slate-400">Participación (${pct}%)</span>
-                    <span class="text-teal-400 font-bold">${data.sum} / ${total}</span>
+                    <span class="text-slate-500 dark:text-slate-400">Participación (${pct}%)</span>
+                    <span class="text-teal-600 dark:text-teal-400 font-bold">${data.sum} / ${total}</span>
                 </div>
-                <div class="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
+                <div class="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
                     <div class="bg-teal-500 h-full" style="width:${pct}%"></div>
                 </div>
             </div>
             ${topProduct ? `
-            <div class="bg-dark/40 rounded-lg p-4 border border-slate-700">
-                <p class="text-[10px] text-slate-500 uppercase font-bold mb-2">Producto más solicitado</p>
-                <p class="text-white font-bold text-sm mb-1">${topProduct.rms}</p>
-                <p class="text-xs text-slate-400 line-clamp-2">${topProduct.descripcion}</p>
-                <div class="mt-2 flex justify-between items-center">
-                    <span class="text-[10px] text-teal-500 bg-teal-500/10 px-2 py-0.5 rounded-full font-bold">Servicio</span>
-                    <span class="text-xs font-bold text-white">${topProduct.sum} OTs</span>
+            <div class="bg-white dark:bg-slate-900/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm">
+                <p class="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold mb-1">Producto más solicitado</p>
+                <p class="text-slate-900 dark:text-white font-bold text-sm mb-1">${topProduct.rms}</p>
+                <p class="text-xs text-slate-600 dark:text-slate-400 line-clamp-2">${topProduct.descripcion}</p>
+                <div class="mt-2.5 flex justify-between items-center">
+                    <span class="text-[10px] text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-500/10 border border-teal-200 dark:border-teal-500/30 px-2 py-0.5 rounded-full font-bold">Servicio</span>
+                    <span class="text-xs font-bold text-slate-900 dark:text-white">${topProduct.sum} OTs</span>
                 </div>
             </div>` : ''}
         </div>`;
@@ -259,16 +286,16 @@ function renderTable() {
     }
 
     if (!data.length) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-500">No hay resultados para los filtros seleccionados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400 dark:text-slate-500">No hay resultados para los filtros seleccionados.</td></tr>`;
         return;
     }
 
     tbody.innerHTML = data.slice(0, display).map(item => `
-        <tr class="hover:bg-slate-800/50 transition-colors">
-            <td class="font-medium text-white">${item.marca}</td>
-            <td class="font-mono text-sm text-slate-300">${item.rms}</td>
-            <td class="text-sm text-slate-400 max-w-xs truncate" title="${item.descripcion}">${item.descripcion}</td>
-            <td class="text-center text-xs text-slate-500 whitespace-nowrap">${item.fecha ? item.fecha.slice(0,10) : ''}</td>
+        <tr class="hover:bg-teal-50/70 dark:hover:bg-slate-800/50 transition-colors">
+            <td class="font-semibold text-slate-900 dark:text-white">${item.marca}</td>
+            <td class="font-mono text-sm text-slate-600 dark:text-slate-300">${item.rms}</td>
+            <td class="text-sm text-slate-700 dark:text-slate-300 max-w-xs truncate" title="${item.descripcion}">${item.descripcion}</td>
+            <td class="text-center text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">${item.fecha ? item.fecha.slice(0,10) : ''}</td>
             <td class="text-center"><span class="badge-svc">Servicio</span></td>
         </tr>`).join('');
 }

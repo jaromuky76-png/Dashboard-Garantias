@@ -301,6 +301,10 @@ function renderCharts(aggregated) {
     const topFreq = [...aggregated].sort((a,b) => b.frecuencia - a.frecuencia).slice(0, 8);
     const topQty  = [...aggregated].sort((a,b) => b.cantidad   - a.cantidad).slice(0, 5);
 
+    const isDark = document.documentElement.classList.contains('dark');
+    const tickColor = isDark ? '#94a3b8' : '#64748b';
+    const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
+
     // Chart 1 — Frecuencia
     const ctx1 = document.getElementById('partsByBrandChart');
     if (!ctx1) return;
@@ -313,16 +317,36 @@ function renderCharts(aggregated) {
                     const lbl = i.codigo !== 'N/A' ? `${i.codigo}` : i.descripcion;
                     return lbl.length > 18 ? lbl.substring(0, 16) + '…' : lbl;
                 }),
-                datasets: [{ label: 'Frecuencia (OTs distintas)', data: topFreq.map(i => i.frecuencia),
-                    backgroundColor: '#3b82f6', borderRadius: 5 }]
+                datasets: [{
+                    label: 'Frecuencia (OTs distintas)',
+                    data: topFreq.map(i => i.frecuencia),
+                    backgroundColor: isDark ? '#3b82f6' : '#2563eb',
+                    borderRadius: 5
+                }]
             },
-            options: { responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false }, tooltip: { callbacks: {
-                    afterLabel: ctx => filteredAgg[ctx.dataIndex]?.descripcion || ''
-                }}},
-                scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' },
-                    ticks: { stepSize: 1, color: '#94a3b8' } },
-                    x: { grid: { display: false }, ticks: { color: '#94a3b8' } } } }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: ctx => filteredAgg[ctx.dataIndex]?.descripcion || ''
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: gridColor },
+                        ticks: { stepSize: 1, color: tickColor }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: tickColor }
+                    }
+                }
+            }
         });
     }
 
@@ -338,16 +362,37 @@ function renderCharts(aggregated) {
                     const lbl = i.descripcion;
                     return lbl.length > 22 ? lbl.substring(0, 20) + '…' : lbl;
                 }),
-                datasets: [{ label: 'Cantidad Total Unidades', data: topQty.map(i => i.cantidad),
-                    backgroundColor: '#10b981', borderRadius: 5 }]
+                datasets: [{
+                    label: 'Cantidad Total Unidades',
+                    data: topQty.map(i => i.cantidad),
+                    backgroundColor: isDark ? '#10b981' : '#059669',
+                    borderRadius: 5
+                }]
             },
-            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
-                scales: { x: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
-                    y: { grid: { display: false }, ticks: { color: '#94a3b8' } } } }
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: { color: gridColor },
+                        ticks: { color: tickColor }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { color: tickColor }
+                    }
+                }
+            }
         });
     }
 }
+
+window.refreshRepuestosCharts = function() {
+    if (filteredAgg && filteredAgg.length) renderCharts(filteredAgg);
+};
 
 // ── Tabla ─────────────────────────────────────────────────────────────────────
 function renderTable() {
@@ -368,7 +413,7 @@ function renderTable() {
     if (rcEl) rcEl.textContent = `Mostrando ${items.length} de ${filteredAgg.length} repuestos`;
 
     if (items.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-500">No se encontraron resultados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-8 text-slate-400 dark:text-slate-500">No se encontraron resultados.</td></tr>`;
         return;
     }
 
@@ -379,18 +424,18 @@ function renderTable() {
             ? `<span class="badge-ordered">✔ Pedido (${orderInfo.fecha})</span>`
             : `<span class="badge-new">⬆ Para Pedir</span>`;
         const codeDisplay = item.codigo !== 'N/A'
-            ? `<span class="font-mono text-blue-400">${item.codigo}</span>`
-            : `<span class="text-slate-500 italic">N/A</span>`;
-        const otDetailsDisplay = (item.otDetails || []).map(d => `<span class="whitespace-nowrap px-1 bg-slate-800 text-slate-300 rounded mr-1">${d.mes}: ${d.ot}</span>`).join(' ');
+            ? `<span class="font-mono font-semibold text-blue-600 dark:text-blue-400">${item.codigo}</span>`
+            : `<span class="text-slate-400 italic">N/A</span>`;
+        const otDetailsDisplay = (item.otDetails || []).map(d => `<span class="whitespace-nowrap px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded border border-slate-200 dark:border-slate-700 mr-1 text-[11px]">${d.mes}: ${d.ot}</span>`).join(' ');
 
         return `
-        <tr class="${isOrdered ? 'already-ordered' : ''} hover:bg-slate-800/40 transition-colors" data-key="${item.key}">
+        <tr class="${isOrdered ? 'already-ordered' : ''} hover:bg-blue-50/70 dark:hover:bg-slate-800/40 transition-colors" data-key="${item.key}">
             <td><input type="checkbox" class="row-chk accent-emerald-500 cursor-pointer" data-key="${item.key}" onchange="onCheckboxChange()"></td>
-            <td class="font-bold text-white">${item.marca}</td>
+            <td class="font-bold text-slate-900 dark:text-white">${item.marca}</td>
             <td>${codeDisplay}</td>
-            <td class="text-sm max-w-xs truncate" title="${item.descripcion}">${item.descripcion}</td>
-            <td class="text-center font-bold text-blue-300">${item.frecuencia}</td>
-            <td class="text-center font-bold text-white">${item.cantidad}</td>
+            <td class="text-sm text-slate-700 dark:text-slate-300 max-w-xs truncate" title="${item.descripcion}">${item.descripcion}</td>
+            <td class="text-center font-bold text-blue-600 dark:text-blue-400">${item.frecuencia}</td>
+            <td class="text-center font-bold text-slate-900 dark:text-white">${item.cantidad}</td>
             <td class="text-xs">${otDetailsDisplay}</td>
             <td class="text-center"><span class="${item.priorityClass}">${item.prioridad}</span></td>
             <td class="text-center">${statusBadge}</td>
