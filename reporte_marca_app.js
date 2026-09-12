@@ -1,8 +1,23 @@
-// reporte_marca_app.js -- Lógica para el Reporte de Garantías por Marca
+// reporte_marca_app.js -- Módulo Gerencial y de Auditoría de Garantías por Marca
+// SILVA INTERNACIONAL S.A.
 
 (function() {
     let allRecords = [];
-    let filteredRecords = [];
+    let currentMainView = 'matriz'; // 'matriz' | 'detalle'
+
+    // Estado Matriz Gerencial
+    let matrizDesdeAnio = 2025;
+    let matrizDesdeMes = 1;
+    let matrizHastaAnio = 2026;
+    let matrizHastaMes = 5;
+    let matrizDesglose = 'categoria';
+    let matrizMarca = 'ALL';
+
+    let chartCasos = null;
+    let chartTiempos = null;
+
+    // Estado Auditoría Detallada
+    let filteredDetalleRecords = [];
     let currentPage = 1;
     let pageSize = 25;
 
@@ -12,718 +27,1017 @@
         9: 'SEPTIEMBRE', 10: 'OCTUBRE', 11: 'NOVIEMBRE', 12: 'DICIEMBRE'
     };
 
+    const MESES_ABR = {
+        1: 'Ene', 2: 'Feb', 3: 'Mar', 4: 'Abr',
+        5: 'May', 6: 'Jun', 7: 'Jul', 8: 'Ago',
+        9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dic'
+    };
+
     function init() {
         if (!window.REPORTES_DATA) {
-            console.warn("window.REPORTES_DATA no disponible aún. Esperando...");
+            console.warn("window.REPORTES_DATA no disponible aún. Reintentando...");
             setTimeout(init, 150);
             return;
         }
 
         allRecords = window.REPORTES_DATA || [];
-        console.log(`Cargados ${allRecords.length} registros en Reportes de Marcas.`);
+        console.log(`Cargados ${allRecords.length} registros en Reportes y Análisis Gerencial.`);
 
-        // Actualizar total en header
+        // Header total
         const headerTotal = document.getElementById('header-total-registros');
         if (headerTotal) {
             headerTotal.textContent = allRecords.length.toLocaleString();
         }
 
-        // Poblar Marcas
-        poblarSelectorMarcas();
+        // Poblar Selectores de Marcas
+        poblarSelectoresMarcas();
 
-        // Listeners de eventos
-        document.getElementById('filtro-marca').addEventListener('change', () => { currentPage = 1; aplicarFiltros(); });
-        document.getElementById('filtro-unidad').addEventListener('change', () => { currentPage = 1; aplicarFiltros(); });
-        document.getElementById('filtro-desde-mes').addEventListener('change', () => { deseleccionarBotonesRapidos(); currentPage = 1; aplicarFiltros(); });
-        document.getElementById('filtro-desde-anio').addEventListener('change', () => { deseleccionarBotonesRapidos(); currentPage = 1; aplicarFiltros(); });
-        document.getElementById('filtro-hasta-mes').addEventListener('change', () => { deseleccionarBotonesRapidos(); currentPage = 1; aplicarFiltros(); });
-        document.getElementById('filtro-hasta-anio').addEventListener('change', () => { deseleccionarBotonesRapidos(); currentPage = 1; aplicarFiltros(); });
-        
+        // Listeners Matriz
+        const mDesglose = document.getElementById('matriz-desglose');
+        if (mDesglose) mDesglose.addEventListener('change', (e) => { matrizDesglose = e.target.value; calcularMatriz(); });
+
+        const mMarca = document.getElementById('matriz-filtro-marca');
+        if (mMarca) mMarca.addEventListener('change', (e) => { matrizMarca = e.target.value; calcularMatriz(); });
+
+        const mDMes = document.getElementById('matriz-desde-mes');
+        const mDAnio = document.getElementById('matriz-desde-anio');
+        const mHMes = document.getElementById('matriz-hasta-mes');
+        const mHAnio = document.getElementById('matriz-hasta-anio');
+
+        if (mDMes) mDMes.addEventListener('change', (e) => { deseleccionarBotonesRapidosMatriz(); matrizDesdeMes = parseInt(e.target.value); calcularMatriz(); });
+        if (mDAnio) mDAnio.addEventListener('change', (e) => { deseleccionarBotonesRapidosMatriz(); matrizDesdeAnio = parseInt(e.target.value); calcularMatriz(); });
+        if (mHMes) mHMes.addEventListener('change', (e) => { deseleccionarBotonesRapidosMatriz(); matrizHastaMes = parseInt(e.target.value); calcularMatriz(); });
+        if (mHAnio) mHAnio.addEventListener('change', (e) => { deseleccionarBotonesRapidosMatriz(); matrizHastaAnio = parseInt(e.target.value); calcularMatriz(); });
+
+        // Listeners Detalle
+        const fMarca = document.getElementById('filtro-marca');
+        if (fMarca) fMarca.addEventListener('change', () => { currentPage = 1; aplicarFiltrosDetalle(); });
+
+        const fUnidad = document.getElementById('filtro-unidad');
+        if (fUnidad) fUnidad.addEventListener('change', () => { currentPage = 1; aplicarFiltrosDetalle(); });
+
+        const fDMes = document.getElementById('filtro-desde-mes');
+        const fDAnio = document.getElementById('filtro-desde-anio');
+        const fHMes = document.getElementById('filtro-hasta-mes');
+        const fHAnio = document.getElementById('filtro-hasta-anio');
+
+        if (fDMes) fDMes.addEventListener('change', () => { deseleccionarBotonesRapidosDetalle(); currentPage = 1; aplicarFiltrosDetalle(); });
+        if (fDAnio) fDAnio.addEventListener('change', () => { deseleccionarBotonesRapidosDetalle(); currentPage = 1; aplicarFiltrosDetalle(); });
+        if (fHMes) fHMes.addEventListener('change', () => { deseleccionarBotonesRapidosDetalle(); currentPage = 1; aplicarFiltrosDetalle(); });
+        if (fHAnio) fHAnio.addEventListener('change', () => { deseleccionarBotonesRapidosDetalle(); currentPage = 1; aplicarFiltrosDetalle(); });
+
         const buscador = document.getElementById('buscador-general');
         const btnClear = document.getElementById('btn-clear-search');
-        buscador.addEventListener('input', () => {
-            if (btnClear) {
-                if (buscador.value.trim().length > 0) {
-                    btnClear.classList.remove('hidden');
-                } else {
-                    btnClear.classList.add('hidden');
+        if (buscador) {
+            buscador.addEventListener('input', () => {
+                if (btnClear) {
+                    if (buscador.value.trim().length > 0) btnClear.classList.remove('hidden');
+                    else btnClear.classList.add('hidden');
                 }
-            }
-            currentPage = 1;
-            aplicarFiltros();
-        });
+                currentPage = 1;
+                aplicarFiltrosDetalle();
+            });
+        }
 
-        // Aplicar filtros iniciales
-        aplicarFiltros();
+        // Ejecutar cálculos iniciales
+        calcularMatriz();
+        aplicarFiltrosDetalle();
     }
 
-    function poblarSelectorMarcas() {
-        const select = document.getElementById('filtro-marca');
-        if (!select) return;
+    // =========================================================================
+    // CONMUTACIÓN DE VISTAS (MATRIZ VS DETALLE)
+    // =========================================================================
+    window.switchMainView = function(viewName) {
+        currentMainView = viewName;
+        const viewMatriz = document.getElementById('view-matriz-gerencial');
+        const viewDetalle = document.getElementById('view-auditoria-detallada');
+        const tabMatriz = document.getElementById('tab-btn-matriz');
+        const tabDetalle = document.getElementById('tab-btn-detalle');
 
-        // Extraer marcas únicas
+        if (viewName === 'matriz') {
+            if (viewMatriz) viewMatriz.classList.remove('hidden');
+            if (viewDetalle) viewDetalle.classList.add('hidden');
+
+            if (tabMatriz) {
+                tabMatriz.className = "flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-xs tracking-wide transition-all cursor-pointer shadow-md bg-blue-600 text-white";
+            }
+            if (tabDetalle) {
+                tabDetalle.className = "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs tracking-wide transition-all cursor-pointer text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white";
+            }
+            // Redibujar gráficos para ajustar dimensiones
+            setTimeout(refreshReporteCharts, 100);
+        } else {
+            if (viewMatriz) viewMatriz.classList.add('hidden');
+            if (viewDetalle) viewDetalle.classList.remove('hidden');
+
+            if (tabDetalle) {
+                tabDetalle.className = "flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-xs tracking-wide transition-all cursor-pointer shadow-md bg-blue-600 text-white";
+            }
+            if (tabMatriz) {
+                tabMatriz.className = "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs tracking-wide transition-all cursor-pointer text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white";
+            }
+        }
+    };
+
+    // =========================================================================
+    // POBLAR MARCAS
+    // =========================================================================
+    function poblarSelectoresMarcas() {
         const marcasSet = new Set();
         allRecords.forEach(r => {
             if (r.marca && r.marca !== 'DESCONOCIDA') {
                 marcasSet.add(r.marca.trim().toUpperCase());
             }
         });
-
         const marcasOrdenadas = Array.from(marcasSet).sort();
 
-        // Limpiar opciones preservando "Todas las Marcas"
-        select.innerHTML = '<option value="ALL">Todas las Marcas (' + marcasOrdenadas.length + ' disponibles)</option>';
+        // 1. Selector Matriz
+        const selMatriz = document.getElementById('matriz-filtro-marca');
+        if (selMatriz) {
+            selMatriz.innerHTML = '<option value="ALL" selected>Todas las Marcas (General)</option>';
+            marcasOrdenadas.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = m;
+                selMatriz.appendChild(opt);
+            });
+        }
 
-        let hasHisense = false;
-        marcasOrdenadas.forEach(m => {
-            const opt = document.createElement('option');
-            opt.value = m;
-            opt.textContent = m;
-            if (m === 'HISENSE') {
-                hasHisense = true;
-                opt.selected = true; // Seleccionar HISENSE por defecto
+        // 2. Selector Detalle
+        const selDetalle = document.getElementById('filtro-marca');
+        if (selDetalle) {
+            selDetalle.innerHTML = '<option value="ALL">Todas las Marcas (' + marcasOrdenadas.length + ' disponibles)</option>';
+            marcasOrdenadas.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = m;
+                if (m === 'HISENSE') opt.selected = true; // Hisense por defecto en auditoria
+                selDetalle.appendChild(opt);
+            });
+        }
+
+        const label = document.getElementById('marca-count-label');
+        if (label) label.textContent = `${marcasOrdenadas.length} marcas registradas`;
+    }
+
+    // =========================================================================
+    // LÓGICA DE MATRIZ GERENCIAL Y TIEMPOS DE RESPUESTA
+    // =========================================================================
+    function deseleccionarBotonesRapidosMatriz() {
+        document.querySelectorAll('#view-matriz-gerencial .btn-periodo').forEach(b => b.classList.remove('active'));
+    }
+
+    window.setMatrizRangoRapido = function(dAnio, dMes, hAnio, hMes, btnElement) {
+        deseleccionarBotonesRapidosMatriz();
+        if (btnElement) btnElement.classList.add('active');
+
+        matrizDesdeAnio = dAnio;
+        matrizDesdeMes = dMes;
+        matrizHastaAnio = hAnio;
+        matrizHastaMes = hMes;
+
+        const elDMes = document.getElementById('matriz-desde-mes');
+        const elDAnio = document.getElementById('matriz-desde-anio');
+        const elHMes = document.getElementById('matriz-hasta-mes');
+        const elHAnio = document.getElementById('matriz-hasta-anio');
+
+        if (elDMes) elDMes.value = String(dMes);
+        if (elDAnio) elDAnio.value = String(dAnio);
+        if (elHMes) elHMes.value = String(hMes);
+        if (elHAnio) elHAnio.value = String(hAnio);
+
+        calcularMatriz();
+    };
+
+    function calcularMatriz() {
+        // Filtrar registros por rango de fechas y marca
+        const startVal = matrizDesdeAnio * 100 + matrizDesdeMes;
+        const endVal = matrizHastaAnio * 100 + matrizHastaMes;
+
+        const records = allRecords.filter(r => {
+            const anio = parseInt(r.anio) || 2026;
+            const mesNum = parseInt(r.mesNum) || 1;
+            const val = anio * 100 + mesNum;
+            if (val < startVal || val > endVal) return false;
+
+            if (matrizMarca !== 'ALL') {
+                if ((r.marca || '').toUpperCase() !== matrizMarca) return false;
             }
-            select.appendChild(opt);
+            return true;
         });
 
-        // Etiqueta informativa
-        const label = document.getElementById('marca-count-label');
-        if (label) {
-            label.textContent = `${marcasOrdenadas.length} marcas registradas`;
+        // Agrupar por Mes
+        // Generar lista de todos los meses en el rango en orden cronológico
+        const mesesEnRango = [];
+        let curY = matrizDesdeAnio;
+        let curM = matrizDesdeMes;
+        while (curY * 100 + curM <= endVal) {
+            mesesEnRango.push({
+                key: `${curY}-${String(curM).padStart(2, '0')}`,
+                anio: curY,
+                mesNum: curM,
+                label: `${MESES_ABR[curM]} ${curY}`,
+                fullLabel: `${MESES_NOMBRES[curM]} ${curY}`
+            });
+            curM++;
+            if (curM > 12) {
+                curM = 1;
+                curY++;
+            }
+        }
+
+        // Determinar categorías activas según el tipo de desglose
+        const catCountsGlobal = {};
+        records.forEach(r => {
+            let catKey = '';
+            if (matrizDesglose === 'categoria') {
+                catKey = r.categoria || 'Otras Categorías';
+            } else if (matrizDesglose === 'tipo_garantia') {
+                catKey = r.tipo_garantia || 'SIN ESPECIFICAR';
+            } else {
+                catKey = r.unidad === 'CS' ? 'Centro de Servicios' : 'Maestros';
+            }
+            catCountsGlobal[catKey] = (catCountsGlobal[catKey] || 0) + 1;
+        });
+
+        // Ordenar categorías por volumen descendente
+        const categoriasOrdenadas = Object.keys(catCountsGlobal).sort((a, b) => catCountsGlobal[b] - catCountsGlobal[a]);
+
+        // Estructura por mes
+        const mesesData = {};
+        mesesEnRango.forEach(m => {
+            mesesData[m.key] = {
+                meta: m,
+                total: 0,
+                categorias: {},
+                diagDias: [],
+                cierreDias: []
+            };
+            categoriasOrdenadas.forEach(c => {
+                mesesData[m.key].categorias[c] = 0;
+            });
+        });
+
+        // Llenar datos
+        let totalGeneralCasos = 0;
+        const allDiagDias = [];
+        const allCierreDias = [];
+
+        records.forEach(r => {
+            const anio = parseInt(r.anio) || 2026;
+            const mesNum = parseInt(r.mesNum) || 1;
+            const key = `${anio}-${String(mesNum).padStart(2, '0')}`;
+            if (!mesesData[key]) return;
+
+            let catKey = '';
+            if (matrizDesglose === 'categoria') catKey = r.categoria || 'Otras Categorías';
+            else if (matrizDesglose === 'tipo_garantia') catKey = r.tipo_garantia || 'SIN ESPECIFICAR';
+            else catKey = r.unidad === 'CS' ? 'Centro de Servicios' : 'Maestros';
+
+            mesesData[key].total++;
+            mesesData[key].categorias[catKey] = (mesesData[key].categorias[catKey] || 0) + 1;
+            totalGeneralCasos++;
+
+            if (r.dias_diagnostico !== null && r.dias_diagnostico !== undefined && !isNaN(r.dias_diagnostico)) {
+                mesesData[key].diagDias.push(parseFloat(r.dias_diagnostico));
+                allDiagDias.push(parseFloat(r.dias_diagnostico));
+            }
+            if (r.dias_cierre !== null && r.dias_cierre !== undefined && !isNaN(r.dias_cierre)) {
+                mesesData[key].cierreDias.push(parseFloat(r.dias_cierre));
+                allCierreDias.push(parseFloat(r.dias_cierre));
+            }
+        });
+
+        // Actualizar KPIs de la Matriz
+        const elTotal = document.getElementById('matriz-kpi-total');
+        if (elTotal) elTotal.textContent = totalGeneralCasos.toLocaleString();
+
+        const elDiag = document.getElementById('matriz-kpi-diag');
+        if (elDiag) {
+            if (allDiagDias.length > 0) {
+                const avg = allDiagDias.reduce((a, b) => a + b, 0) / allDiagDias.length;
+                const hrs = Math.round(avg * 24);
+                elDiag.textContent = `${avg.toFixed(1)} días`;
+                const sub = document.getElementById('matriz-kpi-diag-sub');
+                if (sub) sub.textContent = `~${hrs} hrs promedio (${allDiagDias.length.toLocaleString()} casos evaluados)`;
+            } else {
+                elDiag.textContent = 'N/D';
+            }
+        }
+
+        const elCierre = document.getElementById('matriz-kpi-cierre');
+        if (elCierre) {
+            if (allCierreDias.length > 0) {
+                const avg = allCierreDias.reduce((a, b) => a + b, 0) / allCierreDias.length;
+                elCierre.textContent = `${avg.toFixed(1)} días`;
+                const sub = document.getElementById('matriz-kpi-cierre-sub');
+                if (sub) sub.textContent = `Ciclo Completo (${allCierreDias.length.toLocaleString()} casos finalizados)`;
+            } else {
+                elCierre.textContent = 'N/D';
+            }
+        }
+
+        const elCatP = document.getElementById('matriz-kpi-cat-principal');
+        const elCatSub = document.getElementById('matriz-kpi-cat-sub');
+        if (elCatP && categoriasOrdenadas.length > 0) {
+            const topCat = categoriasOrdenadas[0];
+            const topCount = catCountsGlobal[topCat] || 0;
+            const pct = totalGeneralCasos > 0 ? ((topCount / totalGeneralCasos) * 100).toFixed(1) : '0';
+            elCatP.textContent = topCat;
+            if (elCatSub) elCatSub.textContent = `${topCount.toLocaleString()} casos (${pct}% del total)`;
+        } else if (elCatP) {
+            elCatP.textContent = '--';
+            if (elCatSub) elCatSub.textContent = '0% del total';
+        }
+
+        const mesesLabel = document.getElementById('matriz-total-meses-label');
+        if (mesesLabel) mesesLabel.textContent = `${mesesEnRango.length} meses`;
+
+        // Renderizar Tabla Matriz
+        renderTablaMatriz(mesesEnRango, categoriasOrdenadas, mesesData, catCountsGlobal, totalGeneralCasos, allDiagDias, allCierreDias);
+
+        // Renderizar Gráficos
+        renderGraficosMatriz(mesesEnRango, categoriasOrdenadas, mesesData);
+    }
+
+    function renderTablaMatriz(mesesEnRango, categorias, mesesData, catCountsGlobal, totalCasos, allDiagDias, allCierreDias) {
+        const thead = document.getElementById('matriz-thead');
+        const tbody = document.getElementById('matriz-tbody');
+        const tfoot = document.getElementById('matriz-tfoot');
+
+        if (!thead || !tbody || !tfoot) return;
+
+        // Thead
+        let headHtml = '<tr><th class="w-36">Mes / Período</th>';
+        categorias.forEach(cat => {
+            headHtml += `<th class="text-right px-3">${cat}</th>`;
+        });
+        headHtml += '<th class="text-right px-4 bg-blue-50/70 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 font-extrabold">Total Casos</th>';
+        headHtml += '<th class="text-right px-3 text-emerald-700 dark:text-emerald-400">Diag. Prom (Días)</th>';
+        headHtml += '<th class="text-right px-3 text-purple-700 dark:text-purple-400">Cierre Prom (Días)</th></tr>';
+        thead.innerHTML = headHtml;
+
+        // Tbody
+        let bodyHtml = '';
+        mesesEnRango.forEach(m => {
+            const rowData = mesesData[m.key];
+            const avgD = rowData.diagDias.length > 0 ? (rowData.diagDias.reduce((a, b) => a + b, 0) / rowData.diagDias.length).toFixed(1) : '-';
+            const avgC = rowData.cierreDias.length > 0 ? (rowData.cierreDias.reduce((a, b) => a + b, 0) / rowData.cierreDias.length).toFixed(1) : '-';
+
+            bodyHtml += `<tr class="table-row-item">
+                <td class="font-bold text-slate-900 dark:text-white whitespace-nowrap flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                    <span>${m.fullLabel}</span>
+                </td>`;
+
+            categorias.forEach(cat => {
+                const count = rowData.categorias[cat] || 0;
+                const cellClass = count > 0 ? 'text-slate-900 dark:text-slate-100 font-semibold' : 'text-slate-400 dark:text-slate-600';
+                bodyHtml += `<td class="text-right px-3 ${cellClass}">${count > 0 ? count.toLocaleString() : '-'}</td>`;
+            });
+
+            bodyHtml += `<td class="text-right px-4 font-black text-blue-600 dark:text-blue-400 bg-blue-50/40 dark:bg-blue-950/20">${rowData.total.toLocaleString()}</td>
+                <td class="text-right px-3 font-semibold text-emerald-600 dark:text-emerald-400">${avgD !== '-' ? avgD + ' d' : '-'}</td>
+                <td class="text-right px-3 font-semibold text-purple-600 dark:text-purple-400">${avgC !== '-' ? avgC + ' d' : '-'}</td>
+            </tr>`;
+        });
+        tbody.innerHTML = bodyHtml;
+
+        // Tfoot
+        const avgGlobalDiag = allDiagDias.length > 0 ? (allDiagDias.reduce((a, b) => a + b, 0) / allDiagDias.length).toFixed(1) + ' d' : '-';
+        const avgGlobalCierre = allCierreDias.length > 0 ? (allCierreDias.reduce((a, b) => a + b, 0) / allCierreDias.length).toFixed(1) + ' d' : '-';
+
+        let footHtml = `<tr class="bg-slate-100 dark:bg-slate-900 border-t-2 border-slate-300 dark:border-slate-700 font-black">
+            <td class="text-slate-900 dark:text-white uppercase tracking-wider text-xs">TOTALES / PROMEDIOS</td>`;
+        categorias.forEach(cat => {
+            const cTotal = catCountsGlobal[cat] || 0;
+            footHtml += `<td class="text-right px-3 text-slate-900 dark:text-white">${cTotal.toLocaleString()}</td>`;
+        });
+        footHtml += `<td class="text-right px-4 text-blue-700 dark:text-blue-300 text-sm">${totalCasos.toLocaleString()}</td>
+            <td class="text-right px-3 text-emerald-700 dark:text-emerald-400 text-sm">${avgGlobalDiag}</td>
+            <td class="text-right px-3 text-purple-700 dark:text-purple-400 text-sm">${avgGlobalCierre}</td>
+        </tr>`;
+        tfoot.innerHTML = footHtml;
+    }
+
+    // =========================================================================
+    // RENDERIZADO DE GRÁFICOS (CHART.JS)
+    // =========================================================================
+    function getThemeColors() {
+        const isDark = document.documentElement.classList.contains('dark');
+        return {
+            textColor: isDark ? '#94a3b8' : '#64748b',
+            gridColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)',
+            tooltipBg: isDark ? '#1e293b' : '#ffffff',
+            tooltipText: isDark ? '#f8fafc' : '#0f172a'
+        };
+    }
+
+    function renderGraficosMatriz(mesesEnRango, categorias, mesesData) {
+        if (typeof Chart === 'undefined') return;
+
+        const labels = mesesEnRango.map(m => m.label);
+        const theme = getThemeColors();
+
+        // 1. Gráfico de Casos Mensuales
+        const ctxCasos = document.getElementById('chart-casos-mensual');
+        if (ctxCasos) {
+            if (chartCasos) chartCasos.destroy();
+
+            // Paleta de colores para categorias
+            const palette = [
+                { bg: 'rgba(37, 99, 235, 0.8)', border: '#2563eb' },
+                { bg: 'rgba(16, 185, 129, 0.8)', border: '#10b981' },
+                { bg: 'rgba(168, 85, 247, 0.8)', border: '#a855f7' },
+                { bg: 'rgba(245, 158, 11, 0.8)', border: '#f59e0b' },
+                { bg: 'rgba(14, 165, 233, 0.8)', border: '#0ea5e9' },
+                { bg: 'rgba(236, 72, 153, 0.8)', border: '#ec4899' },
+                { bg: 'rgba(100, 116, 139, 0.8)', border: '#64748b' }
+            ];
+
+            const datasets = categorias.slice(0, 6).map((cat, idx) => {
+                const color = palette[idx % palette.length];
+                return {
+                    label: cat,
+                    data: mesesEnRango.map(m => mesesData[m.key].categorias[cat] || 0),
+                    backgroundColor: color.bg,
+                    borderColor: color.border,
+                    borderWidth: 1,
+                    borderRadius: 4
+                };
+            });
+
+            chartCasos = new Chart(ctxCasos, {
+                type: 'bar',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            stacked: true,
+                            grid: { color: theme.gridColor },
+                            ticks: { color: theme.textColor, font: { family: 'Inter', size: 10 } }
+                        },
+                        y: {
+                            stacked: true,
+                            grid: { color: theme.gridColor },
+                            ticks: { color: theme.textColor, font: { family: 'Inter', size: 10 } }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: { color: theme.textColor, font: { family: 'Inter', size: 10, weight: 600 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 2. Gráfico de Tiempos de Respuesta
+        const ctxTiempos = document.getElementById('chart-tiempos-respuesta');
+        if (ctxTiempos) {
+            if (chartTiempos) chartTiempos.destroy();
+
+            const diagData = mesesEnRango.map(m => {
+                const arr = mesesData[m.key].diagDias;
+                return arr.length > 0 ? parseFloat((arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1)) : null;
+            });
+
+            const cierreData = mesesEnRango.map(m => {
+                const arr = mesesData[m.key].cierreDias;
+                return arr.length > 0 ? parseFloat((arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1)) : null;
+            });
+
+            chartTiempos = new Chart(ctxTiempos, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'Diag. Promedio (Días)',
+                            data: diagData,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                            tension: 0.3,
+                            borderWidth: 2.5,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            fill: true
+                        },
+                        {
+                            label: 'Cierre Promedio (Días)',
+                            data: cierreData,
+                            borderColor: '#8b5cf6',
+                            backgroundColor: 'rgba(139, 92, 246, 0.08)',
+                            tension: 0.3,
+                            borderWidth: 2.5,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            grid: { color: theme.gridColor },
+                            ticks: { color: theme.textColor, font: { family: 'Inter', size: 10 } }
+                        },
+                        y: {
+                            grid: { color: theme.gridColor },
+                            ticks: { 
+                                color: theme.textColor, 
+                                font: { family: 'Inter', size: 10 },
+                                callback: val => val + ' d'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: { color: theme.textColor, font: { family: 'Inter', size: 10, weight: 600 } }
+                        }
+                    }
+                }
+            });
         }
     }
 
-    function deseleccionarBotonesRapidos() {
-        document.querySelectorAll('.btn-periodo').forEach(b => b.classList.remove('active'));
+    window.refreshReporteCharts = function() {
+        if (currentMainView === 'matriz') {
+            calcularMatriz();
+        }
+    };
+
+    // =========================================================================
+    // EXPORTACIÓN A EXCEL: MATRIZ GERENCIAL + DETALLE EN 2 HOJAS
+    // =========================================================================
+    window.exportarMatrizExcel = function() {
+        if (typeof XLSX === 'undefined') {
+            alert('La librería SheetJS aún se está cargando. Por favor intente en unos segundos.');
+            return;
+        }
+
+        const startVal = matrizDesdeAnio * 100 + matrizDesdeMes;
+        const endVal = matrizHastaAnio * 100 + matrizHastaMes;
+
+        const records = allRecords.filter(r => {
+            const anio = parseInt(r.anio) || 2026;
+            const mesNum = parseInt(r.mesNum) || 1;
+            const val = anio * 100 + mesNum;
+            if (val < startVal || val > endVal) return false;
+            if (matrizMarca !== 'ALL') {
+                if ((r.marca || '').toUpperCase() !== matrizMarca) return false;
+            }
+            return true;
+        });
+
+        // 1. Datos para Hoja 1: Resumen Gerencial
+        const mesesEnRango = [];
+        let curY = matrizDesdeAnio;
+        let curM = matrizDesdeMes;
+        while (curY * 100 + curM <= endVal) {
+            mesesEnRango.push({
+                key: `${curY}-${String(curM).padStart(2, '0')}`,
+                anio: curY,
+                mesNum: curM,
+                label: `${MESES_NOMBRES[curM]} ${curY}`
+            });
+            curM++;
+            if (curM > 12) { curM = 1; curY++; }
+        }
+
+        const catCountsGlobal = {};
+        records.forEach(r => {
+            let catKey = '';
+            if (matrizDesglose === 'categoria') catKey = r.categoria || 'Otras Categorías';
+            else if (matrizDesglose === 'tipo_garantia') catKey = r.tipo_garantia || 'SIN ESPECIFICAR';
+            else catKey = r.unidad === 'CS' ? 'Centro de Servicios' : 'Maestros';
+            catCountsGlobal[catKey] = (catCountsGlobal[catKey] || 0) + 1;
+        });
+        const categorias = Object.keys(catCountsGlobal).sort((a, b) => catCountsGlobal[b] - catCountsGlobal[a]);
+
+        const mesesData = {};
+        mesesEnRango.forEach(m => {
+            mesesData[m.key] = { meta: m, total: 0, categorias: {}, diagDias: [], cierreDias: [] };
+            categorias.forEach(c => { mesesData[m.key].categorias[c] = 0; });
+        });
+
+        const allDiagDias = [];
+        const allCierreDias = [];
+
+        records.forEach(r => {
+            const anio = parseInt(r.anio) || 2026;
+            const mesNum = parseInt(r.mesNum) || 1;
+            const key = `${anio}-${String(mesNum).padStart(2, '0')}`;
+            if (!mesesData[key]) return;
+
+            let catKey = '';
+            if (matrizDesglose === 'categoria') catKey = r.categoria || 'Otras Categorías';
+            else if (matrizDesglose === 'tipo_garantia') catKey = r.tipo_garantia || 'SIN ESPECIFICAR';
+            else catKey = r.unidad === 'CS' ? 'Centro de Servicios' : 'Maestros';
+
+            mesesData[key].total++;
+            mesesData[key].categorias[catKey] = (mesesData[key].categorias[catKey] || 0) + 1;
+
+            if (r.dias_diagnostico !== null && !isNaN(r.dias_diagnostico)) {
+                mesesData[key].diagDias.push(parseFloat(r.dias_diagnostico));
+                allDiagDias.push(parseFloat(r.dias_diagnostico));
+            }
+            if (r.dias_cierre !== null && !isNaN(r.dias_cierre)) {
+                mesesData[key].cierreDias.push(parseFloat(r.dias_cierre));
+                allCierreDias.push(parseFloat(r.dias_cierre));
+            }
+        });
+
+        // Construir matriz para Hoja 1
+        const rowsHoja1 = [];
+        rowsHoja1.push(["SILVA INTERNACIONAL S.A. - INFORME GERENCIAL DE GARANTÍAS Y TIEMPOS DE RESPUESTA"]);
+        rowsHoja1.push([`Período: ${MESES_NOMBRES[matrizDesdeMes]} ${matrizDesdeAnio} a ${MESES_NOMBRES[matrizHastaMes]} ${matrizHastaAnio} | Marca: ${matrizMarca === 'ALL' ? 'Todas las Marcas' : matrizMarca}`]);
+        rowsHoja1.push([]);
+
+        // Encabezados
+        const headersH1 = ["Mes / Período", ...categorias, "Total Casos", "Tiempo Diag. Prom (Días)", "Tiempo Cierre Prom (Días)"];
+        rowsHoja1.push(headersH1);
+
+        mesesEnRango.forEach(m => {
+            const d = mesesData[m.key];
+            const avgD = d.diagDias.length > 0 ? parseFloat((d.diagDias.reduce((a, b) => a + b, 0) / d.diagDias.length).toFixed(1)) : 0;
+            const avgC = d.cierreDias.length > 0 ? parseFloat((d.cierreDias.reduce((a, b) => a + b, 0) / d.cierreDias.length).toFixed(1)) : 0;
+
+            const row = [m.label];
+            categorias.forEach(c => { row.push(d.categorias[c] || 0); });
+            row.push(d.total);
+            row.push(avgD > 0 ? avgD : "-");
+            row.push(avgC > 0 ? avgC : "-");
+            rowsHoja1.push(row);
+        });
+
+        // Fila de totales
+        const avgTotD = allDiagDias.length > 0 ? parseFloat((allDiagDias.reduce((a, b) => a + b, 0) / allDiagDias.length).toFixed(1)) : 0;
+        const avgTotC = allCierreDias.length > 0 ? parseFloat((allCierreDias.reduce((a, b) => a + b, 0) / allCierreDias.length).toFixed(1)) : 0;
+        const totalRow = ["TOTAL / PROMEDIO GENERAL"];
+        categorias.forEach(c => { totalRow.push(catCountsGlobal[c] || 0); });
+        totalRow.push(records.length);
+        totalRow.push(avgTotD > 0 ? avgTotD : "-");
+        totalRow.push(avgTotC > 0 ? avgTotC : "-");
+        rowsHoja1.push(totalRow);
+
+        const ws1 = XLSX.utils.aoa_to_sheet(rowsHoja1);
+
+        // 2. Datos para Hoja 2: Detalle de Casos
+        const rowsHoja2 = [];
+        rowsHoja2.push([
+            "Unidad", "No. OT", "Marca", "No. Orden Marca", "Fecha Ingreso",
+            "Cliente", "Descripción del Producto", "Modelo", "Serie",
+            "Categoría", "Tipo de Garantía", "Fecha Diagnóstico", "Días Diagnóstico",
+            "Fecha Cierre", "Días Cierre", "Estatus"
+        ]);
+
+        records.forEach(r => {
+            rowsHoja2.push([
+                r.unidad || "",
+                r.ot || "",
+                r.marca || "",
+                r.no_caso_marca || "",
+                r.fecha || "",
+                r.cliente || "",
+                r.descripcion || "",
+                r.modelo || "",
+                r.serie || "",
+                r.categoria || "",
+                r.tipo_garantia || "",
+                r.fecha_diagnostico || "",
+                r.dias_diagnostico !== null && r.dias_diagnostico !== undefined ? r.dias_diagnostico : "",
+                r.fecha_cierre || "",
+                r.dias_cierre !== null && r.dias_cierre !== undefined ? r.dias_cierre : "",
+                r.estatus || ""
+            ]);
+        });
+
+        const ws2 = XLSX.utils.aoa_to_sheet(rowsHoja2);
+
+        // Aplicar estilos si xlsx-js-style está disponible
+        try {
+            // Estilos Hoja 1
+            const styleHeader = {
+                font: { bold: true, color: { rgb: "FFFFFF" }, sz: 10, name: "Calibri" },
+                fill: { fgColor: { rgb: "1E3A8A" } },
+                alignment: { horizontal: "center", vertical: "center", wrapText: true }
+            };
+            const styleTotal = {
+                font: { bold: true, color: { rgb: "0F172A" }, sz: 10, name: "Calibri" },
+                fill: { fgColor: { rgb: "E2E8F0" } },
+                alignment: { horizontal: "center", vertical: "center" }
+            };
+
+            const range1 = XLSX.utils.decode_range(ws1['!ref']);
+            for (let C = range1.s.c; C <= range1.e.c; ++C) {
+                const cellRefH = XLSX.utils.encode_cell({ r: 3, c: C });
+                if (ws1[cellRefH]) ws1[cellRefH].s = styleHeader;
+
+                const cellRefT = XLSX.utils.encode_cell({ r: rowsHoja1.length - 1, c: C });
+                if (ws1[cellRefT]) ws1[cellRefT].s = styleTotal;
+            }
+
+            // Anchos de columna
+            ws1['!cols'] = [{ wch: 22 }, ...categorias.map(() => ({ wch: 18 })), { wch: 15 }, { wch: 22 }, { wch: 22 }];
+            ws2['!cols'] = [
+                { wch: 10 }, { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 18 },
+                { wch: 30 }, { wch: 40 }, { wch: 20 }, { wch: 20 },
+                { wch: 22 }, { wch: 22 }, { wch: 18 }, { wch: 14 },
+                { wch: 18 }, { wch: 14 }, { wch: 15 }
+            ];
+        } catch (e) {
+            console.warn("Estilos de celda omitidos:", e);
+        }
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws1, "Resumen Gerencial");
+        XLSX.utils.book_append_sheet(wb, ws2, "Detalle de Casos");
+
+        const marcaName = matrizMarca === 'ALL' ? 'TodasLasMarcas' : matrizMarca.replace(/\s+/g, '_');
+        const filename = `SILVA_Reporte_Gerencial_${marcaName}_${matrizDesdeAnio}_${matrizHastaAnio}.xlsx`;
+        XLSX.writeFile(wb, filename);
+    };
+
+    // =========================================================================
+    // LÓGICA DE AUDITORÍA DETALLADA (TABLA DE OTs)
+    // =========================================================================
+    function deseleccionarBotonesRapidosDetalle() {
+        document.querySelectorAll('#view-auditoria-detallada .btn-periodo').forEach(b => b.classList.remove('active'));
     }
 
     window.setRangoRapido = function(dAnio, dMes, hAnio, hMes, btnElement) {
-        document.getElementById('filtro-desde-anio').value = dAnio;
-        document.getElementById('filtro-desde-mes').value = dMes;
-        document.getElementById('filtro-hasta-anio').value = hAnio;
-        document.getElementById('filtro-hasta-mes').value = hMes;
-        
-        deseleccionarBotonesRapidos();
-        if (btnElement) {
-            btnElement.classList.add('active');
-        }
+        deseleccionarBotonesRapidosDetalle();
+        if (btnElement) btnElement.classList.add('active');
+
+        const elDMes = document.getElementById('filtro-desde-mes');
+        const elDAnio = document.getElementById('filtro-desde-anio');
+        const elHMes = document.getElementById('filtro-hasta-mes');
+        const elHAnio = document.getElementById('filtro-hasta-anio');
+
+        if (elDMes) elDMes.value = String(dMes);
+        if (elDAnio) elDAnio.value = String(dAnio);
+        if (elHMes) elHMes.value = String(hMes);
+        if (elHAnio) elHAnio.value = String(hAnio);
 
         currentPage = 1;
-        aplicarFiltros();
+        aplicarFiltrosDetalle();
     };
 
     window.limpiarBuscador = function() {
         const input = document.getElementById('buscador-general');
         if (input) {
             input.value = '';
-            input.focus();
+            document.getElementById('btn-clear-search')?.classList.add('hidden');
+            currentPage = 1;
+            aplicarFiltrosDetalle();
         }
-        const btnClear = document.getElementById('btn-clear-search');
-        if (btnClear) {
-            btnClear.classList.add('hidden');
+    };
+
+    function aplicarFiltrosDetalle() {
+        const fMarca = document.getElementById('filtro-marca')?.value || 'ALL';
+        const fUnidad = document.getElementById('filtro-unidad')?.value || 'ALL';
+        const dMes = parseInt(document.getElementById('filtro-desde-mes')?.value || 1);
+        const dAnio = parseInt(document.getElementById('filtro-desde-anio')?.value || 2026);
+        const hMes = parseInt(document.getElementById('filtro-hasta-mes')?.value || 8);
+        const hAnio = parseInt(document.getElementById('filtro-hasta-anio')?.value || 2026);
+        const query = (document.getElementById('buscador-general')?.value || '').trim().toUpperCase();
+
+        const startVal = dAnio * 100 + dMes;
+        const endVal = hAnio * 100 + hMes;
+
+        filteredDetalleRecords = allRecords.filter(r => {
+            if (fMarca !== 'ALL' && (r.marca || '').toUpperCase() !== fMarca) return false;
+            if (fUnidad !== 'ALL' && (r.unidad || '').toUpperCase() !== fUnidad) return false;
+
+            const anio = parseInt(r.anio) || 2026;
+            const mesNum = parseInt(r.mesNum) || 1;
+            const rVal = anio * 100 + mesNum;
+            if (rVal < startVal || rVal > endVal) return false;
+
+            if (query.length > 0) {
+                const match = (r.ot && r.ot.toUpperCase().includes(query)) ||
+                              (r.no_caso_marca && r.no_caso_marca.toUpperCase().includes(query)) ||
+                              (r.cliente && r.cliente.toUpperCase().includes(query)) ||
+                              (r.descripcion && r.descripcion.toUpperCase().includes(query)) ||
+                              (r.modelo && r.modelo.toUpperCase().includes(query)) ||
+                              (r.rms && r.rms.toUpperCase().includes(query)) ||
+                              (r.serie && r.serie.toUpperCase().includes(query)) ||
+                              (r.categoria && r.categoria.toUpperCase().includes(query));
+                if (!match) return false;
+            }
+            return true;
+        });
+
+        // Actualizar KPIs Detalle
+        actualizarKPIsDetalle(fMarca);
+
+        // Renderizar Tabla Detalle
+        renderTablaDetalle();
+    }
+
+    function actualizarKPIsDetalle(marcaSeleccionada) {
+        const total = filteredDetalleRecords.length;
+        let csCount = 0;
+        let maeCount = 0;
+        let conCasoCount = 0;
+
+        filteredDetalleRecords.forEach(r => {
+            if (r.unidad === 'CS') csCount++;
+            else if (r.unidad === 'MAESTROS') maeCount++;
+
+            if (r.no_caso_marca && r.no_caso_marca.trim() !== '') conCasoCount++;
+        });
+
+        const elTot = document.getElementById('kpi-total');
+        if (elTot) elTot.textContent = total.toLocaleString();
+
+        const elCS = document.getElementById('kpi-cs');
+        const elCSPct = document.getElementById('kpi-cs-pct');
+        if (elCS) elCS.textContent = csCount.toLocaleString();
+        if (elCSPct) elCSPct.textContent = total > 0 ? `${((csCount / total) * 100).toFixed(1)}% del total` : '0% del total';
+
+        const elMae = document.getElementById('kpi-maestros');
+        const elMaePct = document.getElementById('kpi-maestros-pct');
+        if (elMae) elMae.textContent = maeCount.toLocaleString();
+        if (elMaePct) elMaePct.textContent = total > 0 ? `${((maeCount / total) * 100).toFixed(1)}% del total` : '0% del total';
+
+        const elCaso = document.getElementById('kpi-con-caso');
+        const elCasoPct = document.getElementById('kpi-con-caso-pct');
+        const elCasoTitle = document.getElementById('kpi-con-caso-title');
+
+        if (elCaso) elCaso.textContent = conCasoCount.toLocaleString();
+        if (elCasoPct) {
+            if (marcaSeleccionada === 'HISENSE' || marcaSeleccionada === 'LG') {
+                elCasoPct.textContent = total > 0 ? `${((conCasoCount / total) * 100).toFixed(1)}% trámite en portal` : '0% trámite en portal';
+                if (elCasoTitle) elCasoTitle.textContent = 'Con No. Orden Marca';
+            } else {
+                elCasoPct.textContent = `${total.toLocaleString()} órdenes con No. OT SILVA`;
+                if (elCasoTitle) elCasoTitle.textContent = 'Control OT Interna';
+            }
         }
+    }
+
+    function renderTablaDetalle() {
+        const tbody = document.getElementById('tabla-cuerpo');
+        if (!tbody) return;
+
+        const total = filteredDetalleRecords.length;
+        const totalPages = Math.ceil(total / pageSize) || 1;
+        if (currentPage > totalPages) currentPage = totalPages;
+
+        const startIdx = (currentPage - 1) * pageSize;
+        const endIdx = Math.min(startIdx + pageSize, total);
+        const pageItems = filteredDetalleRecords.slice(startIdx, endIdx);
+
+        // Indicadores paginador
+        const elShowingStart = document.getElementById('table-showing-start');
+        const elShowingEnd = document.getElementById('table-showing-end');
+        const elShowingTotal = document.getElementById('table-showing-total');
+        const elPagInfo = document.getElementById('paginador-info');
+        const btnPrev = document.getElementById('btn-pag-prev');
+        const btnNext = document.getElementById('btn-pag-next');
+
+        if (elShowingStart) elShowingStart.textContent = total > 0 ? (startIdx + 1).toLocaleString() : '0';
+        if (elShowingEnd) elShowingEnd.textContent = endIdx.toLocaleString();
+        if (elShowingTotal) elShowingTotal.textContent = total.toLocaleString();
+        if (elPagInfo) elPagInfo.textContent = `Página ${currentPage.toLocaleString()} de ${totalPages.toLocaleString()}`;
+
+        if (btnPrev) btnPrev.disabled = (currentPage <= 1);
+        if (btnNext) btnNext.disabled = (currentPage >= totalPages);
+
+        if (pageItems.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-12 text-slate-400 dark:text-slate-500 font-medium">No se encontraron casos de garantía con los filtros seleccionados.</td></tr>`;
+            return;
+        }
+
+        let html = '';
+        pageItems.forEach(r => {
+            const badgeUnidad = r.unidad === 'CS' ? '<span class="badge badge-cs">CS</span>' : '<span class="badge badge-maestros">MAESTROS</span>';
+            
+            let noCasoBadge = '';
+            if (r.no_caso_marca) {
+                noCasoBadge = `<div class="flex items-center gap-1.5">
+                    <span class="badge badge-has-case font-mono font-bold">${r.no_caso_marca}</span>
+                    <button onclick="copiarAlPortapapeles('${r.no_caso_marca}', 'No. Caso')" class="copy-btn text-slate-400" title="Copiar No. de Caso">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    </button>
+                </div>`;
+            } else if (r.marca === 'HISENSE' || r.marca === 'LG') {
+                noCasoBadge = '<span class="badge badge-no-case">Pendiente Portal</span>';
+            } else {
+                noCasoBadge = '<span class="badge badge-na-case text-[10px]">No aplica portal</span>';
+            }
+
+            const diagTag = (r.dias_diagnostico !== null && r.dias_diagnostico !== undefined) ? `<span class="text-emerald-600 dark:text-emerald-400 font-bold">${r.dias_diagnostico} d</span>` : '<span class="text-slate-400">-</span>';
+            const cierreTag = (r.dias_cierre !== null && r.dias_cierre !== undefined) ? `<span class="text-purple-600 dark:text-purple-400 font-bold">${r.dias_cierre} d</span>` : '<span class="text-slate-400">-</span>';
+
+            html += `<tr class="table-row-item text-xs">
+                <td>${badgeUnidad}</td>
+                <td>
+                    <div class="flex items-center gap-1.5">
+                        ${r.link ? `<a href="${r.link}" target="_blank" class="font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">${r.ot}<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg></a>` : `<span class="font-bold text-slate-800 dark:text-slate-200">${r.ot}</span>`}
+                        <button onclick="copiarAlPortapapeles('${r.ot}', 'No. OT')" class="copy-btn text-slate-400" title="Copiar No. OT">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                        </button>
+                    </div>
+                </td>
+                <td>${noCasoBadge}</td>
+                <td class="text-slate-600 dark:text-slate-300 whitespace-nowrap font-medium">${r.fecha || '--'}</td>
+                <td class="font-medium text-slate-900 dark:text-slate-100">${r.cliente || '--'}</td>
+                <td class="text-slate-700 dark:text-slate-300 max-w-xs truncate" title="${r.descripcion || ''}">${r.descripcion || '--'}</td>
+                <td><span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">${r.categoria || 'General'}</span></td>
+                <td>${r.serie ? `<span class="serie-chip">${r.serie}</span>` : '<span class="text-slate-400 text-xs italic">S/N</span>'}</td>
+                <td class="text-right">${diagTag}</td>
+                <td class="text-right">${cierreTag}</td>
+            </tr>`;
+        });
+
+        tbody.innerHTML = html;
+    }
+
+    window.cambiarPagina = function(delta) {
+        currentPage += delta;
+        renderTablaDetalle();
+    };
+
+    window.cambiarTamanoPagina = function(tam) {
+        pageSize = parseInt(tam) || 25;
         currentPage = 1;
-        aplicarFiltros();
+        renderTablaDetalle();
     };
 
     window.copiarAlPortapapeles = function(texto, label) {
         if (!texto) return;
         navigator.clipboard.writeText(texto).then(() => {
-            mostrarToast(`${label || 'Texto'} "${texto}" copiado`);
-        }).catch(() => {
-            mostrarToast(`Copiado: ${texto}`);
+            const toast = document.getElementById('toast-copy');
+            const msg = document.getElementById('toast-msg');
+            if (toast && msg) {
+                msg.textContent = `${label} "${texto}" copiado`;
+                toast.style.display = 'flex';
+                setTimeout(() => { toast.style.display = 'none'; }, 2000);
+            }
+        }).catch(err => {
+            console.error('Error al copiar:', err);
         });
     };
-
-    function mostrarToast(mensaje) {
-        const toast = document.getElementById('toast-copy');
-        const toastMsg = document.getElementById('toast-msg');
-        if (!toast) return;
-
-        if (toastMsg) toastMsg.textContent = mensaje;
-        toast.style.display = 'flex';
-
-        if (window._toastTimeout) clearTimeout(window._toastTimeout);
-        window._toastTimeout = setTimeout(() => {
-            toast.style.display = 'none';
-        }, 2200);
-    }
-
-    window.cambiarTamanoPagina = function(tamano) {
-        pageSize = parseInt(tamano, 10);
-        currentPage = 1;
-        renderTabla();
-    };
-
-    window.cambiarPagina = function(delta) {
-        const totalPages = Math.ceil(filteredRecords.length / pageSize) || 1;
-        const nuevaPagina = currentPage + delta;
-        if (nuevaPagina >= 1 && nuevaPagina <= totalPages) {
-            currentPage = nuevaPagina;
-            renderTabla();
-        }
-    };
-
-    function aplicarFiltros() {
-        const marca = document.getElementById('filtro-marca').value;
-        const unidad = document.getElementById('filtro-unidad').value;
-        const desdeAnio = parseInt(document.getElementById('filtro-desde-anio').value, 10);
-        const desdeMes = parseInt(document.getElementById('filtro-desde-mes').value, 10);
-        const hastaAnio = parseInt(document.getElementById('filtro-hasta-anio').value, 10);
-        const hastaMes = parseInt(document.getElementById('filtro-hasta-mes').value, 10);
-        const busqueda = (document.getElementById('buscador-general').value || '').trim().toLowerCase();
-
-        const desdeKey = desdeAnio * 100 + desdeMes;
-        const hastaKey = hastaAnio * 100 + hastaMes;
-
-        filteredRecords = allRecords.filter(r => {
-            // Filtro Período
-            const anio = parseInt(r.anio, 10) || 2026;
-            const mesNum = parseInt(r.mesNum, 10) || 1;
-            const itemKey = anio * 100 + mesNum;
-            if (itemKey < desdeKey || itemKey > hastaKey) {
-                return false;
-            }
-
-            // Filtro Marca
-            if (marca !== 'ALL') {
-                if ((r.marca || '').toUpperCase() !== marca) {
-                    return false;
-                }
-            }
-
-            // Filtro Unidad
-            if (unidad !== 'ALL') {
-                if ((r.unidad || '').toUpperCase() !== unidad) {
-                    return false;
-                }
-            }
-
-            // Buscador General
-            if (busqueda) {
-                const targetStr = [
-                    r.ot,
-                    r.no_caso_marca,
-                    r.cliente,
-                    r.descripcion,
-                    r.modelo,
-                    r.rms,
-                    r.serie,
-                    r.tipo_garantia
-                ].join(' ').toLowerCase();
-
-                if (!targetStr.includes(busqueda)) {
-                    return false;
-                }
-            }
-
-            return true;
-        });
-
-        // Ordenar registros por período y fecha descendente
-        filteredRecords.sort((a, b) => {
-            const keyA = (a.anio || 0) * 10000 + (a.mesNum || 0) * 100 + (parseInt(a.ot, 10) || 0);
-            const keyB = (b.anio || 0) * 10000 + (b.mesNum || 0) * 100 + (parseInt(b.ot, 10) || 0);
-            return keyB - keyA;
-        });
-
-        actualizarKPIs(desdeMes, desdeAnio, hastaMes, hastaAnio, marca);
-        renderTabla();
-    }
-
-    function actualizarKPIs(dMes, dAnio, hMes, hAnio, marca) {
-        const total = filteredRecords.length;
-        const csCount = filteredRecords.filter(r => r.unidad === 'CS').length;
-        const maeCount = filteredRecords.filter(r => r.unidad === 'MAESTROS').length;
-
-        document.getElementById('kpi-total').textContent = total.toLocaleString();
-        document.getElementById('kpi-cs').textContent = csCount.toLocaleString();
-        document.getElementById('kpi-maestros').textContent = maeCount.toLocaleString();
-
-        const csPct = total > 0 ? Math.round((csCount / total) * 100) : 0;
-        const maePct = total > 0 ? Math.round((maeCount / total) * 100) : 0;
-
-        document.getElementById('kpi-cs-pct').textContent = `${csPct}% del total`;
-        document.getElementById('kpi-maestros-pct').textContent = `${maePct}% del total`;
-
-        const kpi4Card = document.getElementById('kpi-con-caso');
-        const kpi4Title = kpi4Card.previousElementSibling;
-        const isSpecificNonPortal = (marca !== 'ALL' && marca !== 'LG' && marca !== 'HISENSE');
-
-        if (isSpecificNonPortal) {
-            kpi4Title.textContent = "Control Oficial de Marca";
-            kpi4Card.textContent = "No. de OT";
-            document.getElementById('kpi-con-caso-pct').textContent = "No aplica portal externo (Solo LG e HISENSE)";
-        } else {
-            kpi4Title.textContent = "Con No. Orden Marca";
-            const portalRecords = filteredRecords.filter(r => r.marca === 'LG' || r.marca === 'HISENSE');
-            const conCasoCount = portalRecords.filter(r => r.no_caso_marca && r.no_caso_marca.trim().length > 0).length;
-            const portalTotal = portalRecords.length;
-            const conCasoPct = portalTotal > 0 ? Math.round((conCasoCount / portalTotal) * 100) : 0;
-            
-            kpi4Card.textContent = conCasoCount.toLocaleString();
-            if (marca === 'ALL') {
-                document.getElementById('kpi-con-caso-pct').textContent = `${conCasoCount} de ${portalTotal} (${conCasoPct}%) en LG / HISENSE`;
-            } else {
-                document.getElementById('kpi-con-caso-pct').textContent = `${conCasoCount} de ${total} (${conCasoPct}%) con código de portal`;
-            }
-        }
-
-        const dMesNombre = MESES_NOMBRES[dMes] || '';
-        const hMesNombre = MESES_NOMBRES[hMes] || '';
-        document.getElementById('kpi-periodo-desc').textContent = `${dMesNombre} ${dAnio} a ${hMesNombre} ${hAnio}`;
-    }
-
-    function renderTabla() {
-        const tbody = document.getElementById('tabla-cuerpo');
-        tbody.innerHTML = '';
-
-        const total = filteredRecords.length;
-        const totalPages = Math.ceil(total / pageSize) || 1;
-        if (currentPage > totalPages) currentPage = totalPages;
-
-        const startIndex = (currentPage - 1) * pageSize;
-        const endIndex = Math.min(startIndex + pageSize, total);
-        const pageItems = filteredRecords.slice(startIndex, endIndex);
-
-        // Actualizar contadores
-        document.getElementById('table-showing-start').textContent = total > 0 ? (startIndex + 1).toLocaleString() : '0';
-        document.getElementById('table-showing-end').textContent = endIndex.toLocaleString();
-        document.getElementById('table-showing-total').textContent = total.toLocaleString();
-        document.getElementById('paginador-info').textContent = `Página ${currentPage} de ${totalPages} (${total} registros)`;
-
-        document.getElementById('btn-pag-prev').disabled = (currentPage <= 1);
-        document.getElementById('btn-pag-next').disabled = (currentPage >= totalPages);
-
-        if (pageItems.length === 0) {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td colspan="9" class="text-center py-12 text-slate-400 dark:text-slate-500">
-                    <svg class="w-12 h-12 mx-auto text-slate-400 dark:text-slate-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <p class="text-base font-bold text-slate-700 dark:text-slate-200">No se encontraron casos de garantía</p>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Pruebe ajustando el rango de fechas, seleccionando otra marca o limpiando el buscador.</p>
-                </td>
-            `;
-            tbody.appendChild(tr);
-            return;
-        }
-
-        pageItems.forEach(r => {
-            const tr = document.createElement('tr');
-            tr.className = 'table-row-item group';
-
-            // Badge Unidad
-            const unidadBadge = r.unidad === 'CS' 
-                ? '<span class="badge badge-cs">CS</span>' 
-                : '<span class="badge badge-maestros">MAESTROS</span>';
-
-            // Celda OT con botón de copia rápida y enlace digital
-            let otCellContent = '';
-            if (r.link) {
-                otCellContent = `
-                    <a href="${r.link}" target="_blank" rel="noopener noreferrer" class="font-black text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1">
-                        ${r.ot}
-                        <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
-                        </svg>
-                    </a>
-                `;
-            } else {
-                otCellContent = `<span class="font-black text-slate-900 dark:text-white">${r.ot}</span>`;
-            }
-
-            const otCell = `
-                <div class="inline-flex items-center gap-1.5">
-                    ${otCellContent}
-                    <button type="button" onclick="copiarAlPortapapeles('${r.ot}', 'No. OT')" class="copy-btn text-slate-400 hover:text-blue-600 dark:hover:text-white p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800" title="Copiar No. de OT">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                    </button>
-                </div>
-            `;
-
-            // No. Orden Marca (Tratamiento diferenciado: solo LG e HISENSE tienen orden de fábrica)
-            let marcaCasoCell = '';
-            const isPortalBrand = (r.marca === 'LG' || r.marca === 'HISENSE');
-
-            if (r.no_caso_marca && r.no_caso_marca.trim().length > 0) {
-                marcaCasoCell = `
-                    <div class="inline-flex items-center gap-1.5">
-                        <span class="badge badge-has-case font-mono">${r.no_caso_marca}</span>
-                        <button type="button" onclick="copiarAlPortapapeles('${r.no_caso_marca}', 'No. de Caso')" class="copy-btn text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800" title="Copiar No. Caso Marca">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                        </button>
-                    </div>
-                `;
-            } else if (isPortalBrand) {
-                marcaCasoCell = `<span class="badge badge-no-case">Pendiente Portal</span>`;
-            } else {
-                marcaCasoCell = `<span class="badge badge-na-case">N/A (Solo OT)</span>`;
-            }
-
-            // Fecha
-            const fechaStr = r.fecha ? r.fecha.substring(0, 16) : `${r.mes} ${r.anio}`;
-
-            // Modelo / RMS
-            let modeloStr = r.modelo || r.rms || '--';
-            if (r.modelo && r.rms && r.modelo !== r.rms) {
-                modeloStr = `<span class="font-semibold text-slate-800 dark:text-slate-200">${r.modelo}</span><span class="text-[10px] text-slate-500 dark:text-slate-400 block font-mono">RMS: ${r.rms}</span>`;
-            }
-
-            // Serie
-            const serieStr = r.serie ? `<span class="serie-chip">${r.serie}</span>` : '<span class="text-slate-400 dark:text-slate-500 italic text-xs">No registrada</span>';
-
-            tr.innerHTML = `
-                <td>${unidadBadge}</td>
-                <td>${otCell}</td>
-                <td>${marcaCasoCell}</td>
-                <td class="text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap font-medium">${fechaStr}</td>
-                <td>
-                    <div class="font-bold text-slate-900 dark:text-white text-sm leading-snug">${r.cliente || 'CLIENTE NO ESPECIFICADO'}</div>
-                </td>
-                <td class="text-xs text-slate-600 dark:text-slate-300 max-w-xs leading-relaxed">
-                    <div class="line-clamp-2" title="${r.descripcion || ''}">${r.descripcion || '--'}</div>
-                </td>
-                <td class="text-xs text-slate-700 dark:text-slate-300">${modeloStr}</td>
-                <td>${serieStr}</td>
-                <td class="text-xs">
-                    <span class="text-slate-700 dark:text-slate-300 font-semibold">${r.tipo_garantia || 'GARANTIA'}</span>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
 
     window.exportarExcel = function() {
-        if (!filteredRecords || filteredRecords.length === 0) {
-            alert("No hay registros filtrados para exportar.");
+        if (typeof XLSX === 'undefined') {
+            alert('La librería SheetJS aún se está cargando. Por favor intente en unos segundos.');
             return;
         }
 
-        const btnExport = document.getElementById('btn-exportar-excel');
-        const btnText = document.getElementById('btn-exportar-texto');
-        if (btnText) btnText.textContent = "Generando Excel Ejecutivo...";
-        if (btnExport) btnExport.disabled = true;
+        const fMarca = document.getElementById('filtro-marca')?.value || 'ALL';
+        const rows = [];
+        rows.push([
+            "Unidad", "No. OT", "No. Orden Marca", "Fecha Ingreso", "Cliente",
+            "Descripción del Producto", "Modelo / RMS", "Serie del Equipo",
+            "Categoría", "Tipo de Garantía", "Fecha Diagnóstico", "Días Diagnóstico",
+            "Fecha Cierre", "Días Cierre", "Estatus"
+        ]);
 
-        try {
-            const marca = document.getElementById('filtro-marca').value;
-            const unidad = document.getElementById('filtro-unidad').value;
-            const desdeAnio = document.getElementById('filtro-desde-anio').value;
-            const desdeMesNum = parseInt(document.getElementById('filtro-desde-mes').value, 10);
-            const desdeMes = MESES_NOMBRES[desdeMesNum] || '';
-            const hastaAnio = document.getElementById('filtro-hasta-anio').value;
-            const hastaMesNum = parseInt(document.getElementById('filtro-hasta-mes').value, 10);
-            const hastaMes = MESES_NOMBRES[hastaMesNum] || '';
+        filteredDetalleRecords.forEach(r => {
+            rows.push([
+                r.unidad || "",
+                r.ot || "",
+                r.no_caso_marca || "",
+                r.fecha || "",
+                r.cliente || "",
+                r.descripcion || "",
+                r.modelo || "",
+                r.serie || "",
+                r.categoria || "",
+                r.tipo_garantia || "",
+                r.fecha_diagnostico || "",
+                r.dias_diagnostico !== null && r.dias_diagnostico !== undefined ? r.dias_diagnostico : "",
+                r.fecha_cierre || "",
+                r.dias_cierre !== null && r.dias_cierre !== undefined ? r.dias_cierre : "",
+                r.estatus || ""
+            ]);
+        });
 
-            const marcaTitulo = marca === 'ALL' ? 'TODAS LAS MARCAS' : marca;
-            const unidadTitulo = unidad === 'ALL' ? 'CONSOLIDADO (CS + MAESTROS)' : (unidad === 'CS' ? 'CENTRO DE SERVICIOS (CS)' : 'MAESTROS');
-            const hoy = new Date();
-            const fechaHoraStr = `${String(hoy.getDate()).padStart(2, '0')}/${String(hoy.getMonth() + 1).padStart(2, '0')}/${hoy.getFullYear()} ${String(hoy.getHours()).padStart(2, '0')}:${String(hoy.getMinutes()).padStart(2, '0')}`;
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+        ws['!cols'] = [
+            { wch: 10 }, { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 30 },
+            { wch: 40 }, { wch: 20 }, { wch: 20 }, { wch: 22 }, { wch: 20 },
+            { wch: 18 }, { wch: 14 }, { wch: 18 }, { wch: 14 }, { wch: 15 }
+        ];
 
-            // Matriz AOA completa
-            const aoa = [];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Auditoria_Garantias");
 
-            // Fila 0: Título Principal
-            aoa.push([`REPORTE OFICIAL DE CASOS DE GARANTÍA - ${marcaTitulo}`]);
-            // Fila 1: Subtítulo de Período y Unidad
-            aoa.push([`Período: ${desdeMes} ${desdeAnio} a ${hastaMes} ${hastaAnio}   |   Unidad: ${unidadTitulo}   |   Total Casos: ${filteredRecords.length}`]);
-            // Fila 2: Metadatos de auditoría
-            aoa.push([`Fecha de Generación: ${fechaHoraStr}   |   Fuente: Sistema Centralizado de Estado de OT`]);
-            // Fila 3: Espaciador
-            aoa.push([]);
-
-            // Fila 4: Encabezados de tabla
-            const headers = [
-                "No.",
-                "Unidad",
-                "No. de OT Interna",
-                "No. Orden Marca / Caso",
-                "Fecha de Ingreso",
-                "Nombre del Cliente",
-                "Descripción del Producto",
-                "Modelo / RMS",
-                "Serie del Equipo",
-                "Tipo Garantía / Estado",
-                "Marca",
-                "Enlace OT Digital"
-            ];
-            aoa.push(headers);
-
-            // Filas de Datos (Row index 5 en adelante)
-            filteredRecords.forEach((r, idx) => {
-                const isPortal = (r.marca === 'LG' || r.marca === 'HISENSE');
-                let casoTexto = r.no_caso_marca || '';
-                if (!casoTexto) {
-                    casoTexto = isPortal ? "Pendiente Portal" : "N/A (Solo OT)";
-                }
-
-                aoa.push([
-                    idx + 1,
-                    r.unidad || "CS",
-                    r.ot || "",
-                    casoTexto,
-                    r.fecha || `${r.mes || ''} ${r.anio || ''}`.trim(),
-                    r.cliente || "NO ESPECIFICADO",
-                    r.descripcion || "",
-                    r.modelo || r.rms || "",
-                    r.serie || "",
-                    r.tipo_garantia || "GARANTIA",
-                    r.marca || "",
-                    r.link || ""
-                ]);
-            });
-
-            // Fila de Resumen / Totales (incluida directamente en AOA)
-            const summaryRow = [
-                "TOTAL REGISTROS:",
-                "",
-                filteredRecords.length,
-                "", "", "", "", "", "", "", "", ""
-            ];
-            aoa.push(summaryRow);
-
-            // Generar hoja con SheetJS
-            const ws = XLSX.utils.aoa_to_sheet(aoa);
-
-            // Merges
-            ws['!merges'] = [
-                { s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } },
-                { s: { r: 1, c: 0 }, e: { r: 1, c: headers.length - 1 } },
-                { s: { r: 2, c: 0 }, e: { r: 2, c: headers.length - 1 } },
-                { s: { r: 5 + filteredRecords.length, c: 0 }, e: { r: 5 + filteredRecords.length, c: 1 } }
-            ];
-
-            // Paleta de colores ejecutiva
-            const fontSegoe = 'Segoe UI';
-            const colorNavy = { rgb: "1E3A8A" };      // Azul corporativo oscuro #1E3A8A
-            const colorBlueHeader = { rgb: "1E40AF" }; // Royal blue #1E40AF
-            const colorBorderHeader = { rgb: "93C5FD" }; // Borde azul claro
-            const colorBorderCell = { rgb: "E2E8F0" };   // Borde gris sutil
-            const colorZebraEven = { rgb: "FFFFFF" };
-            const colorZebraOdd = { rgb: "F8FAFC" };     // Blanco humo sutil
-            const colorTextDark = { rgb: "0F172A" };
-            const colorTextMuted = { rgb: "64748B" };
-
-            const thinCellBorder = {
-                top: { style: "thin", color: colorBorderCell },
-                bottom: { style: "thin", color: colorBorderCell },
-                left: { style: "thin", color: colorBorderCell },
-                right: { style: "thin", color: colorBorderCell }
-            };
-
-            // Estilos Fila 0 (Título Principal)
-            if (ws['A1']) {
-                ws['A1'].s = {
-                    font: { name: fontSegoe, sz: 14, bold: true, color: { rgb: "FFFFFF" } },
-                    fill: { fgColor: colorNavy },
-                    alignment: { horizontal: "center", vertical: "center" }
-                };
-            }
-
-            // Estilos Fila 1 (Subtítulo Período)
-            if (ws['A2']) {
-                ws['A2'].s = {
-                    font: { name: fontSegoe, sz: 10, bold: true, color: { rgb: "1E293B" } },
-                    fill: { fgColor: { rgb: "E2E8F0" } },
-                    alignment: { horizontal: "center", vertical: "center" }
-                };
-            }
-
-            // Estilos Fila 2 (Metadatos Fecha)
-            if (ws['A3']) {
-                ws['A3'].s = {
-                    font: { name: fontSegoe, sz: 9, italic: true, color: colorTextMuted },
-                    fill: { fgColor: { rgb: "F1F5F9" } },
-                    alignment: { horizontal: "center", vertical: "center" }
-                };
-            }
-
-            // Estilos Fila 4 (Encabezados de Tabla, r=4)
-            for (let c = 0; c < headers.length; c++) {
-                const ref = XLSX.utils.encode_cell({ r: 4, c: c });
-                if (ws[ref]) {
-                    ws[ref].s = {
-                        font: { name: fontSegoe, sz: 10, bold: true, color: { rgb: "FFFFFF" } },
-                        fill: { fgColor: colorBlueHeader },
-                        alignment: { horizontal: "center", vertical: "center", wrapText: true },
-                        border: {
-                            top: { style: "thin", color: colorBorderHeader },
-                            bottom: { style: "medium", color: colorNavy },
-                            left: { style: "thin", color: colorBorderHeader },
-                            right: { style: "thin", color: colorBorderHeader }
-                        }
-                    };
-                }
-            }
-
-            // Estilos Filas de Datos (r=5 en adelante)
-            const totalRows = filteredRecords.length;
-            for (let r = 0; r < totalRows; r++) {
-                const rowIndex = 5 + r;
-                const isOdd = (r % 2 === 1);
-                const rowBg = isOdd ? colorZebraOdd : colorZebraEven;
-                const record = filteredRecords[r];
-                const isPortal = (record.marca === 'LG' || record.marca === 'HISENSE');
-                const hasCaseCode = record.no_caso_marca && record.no_caso_marca.trim().length > 0;
-
-                for (let c = 0; c < headers.length; c++) {
-                    const ref = XLSX.utils.encode_cell({ r: rowIndex, c: c });
-                    const cell = ws[ref];
-                    if (!cell) continue;
-
-                    let hAlign = "left";
-                    let isBold = false;
-                    let textColor = colorTextDark;
-                    let isMonospace = false;
-
-                    if (c === 0) { // No.
-                        hAlign = "center";
-                        textColor = colorTextMuted;
-                    } else if (c === 1) { // Unidad
-                        hAlign = "center";
-                        isBold = true;
-                        textColor = record.unidad === 'CS' ? { rgb: "1D4ED8" } : { rgb: "7E22CE" };
-                    } else if (c === 2) { // No. OT
-                        hAlign = "center";
-                        isBold = true;
-                        textColor = { rgb: "1E40AF" };
-                    } else if (c === 3) { // No. Caso Marca
-                        hAlign = "center";
-                        if (hasCaseCode) {
-                            isBold = true;
-                            textColor = { rgb: "047857" }; // Verde Esmeralda
-                        } else if (isPortal) {
-                            textColor = { rgb: "D97706" }; // Ámbar Pendiente
-                            isBold = true;
-                        } else {
-                            textColor = colorTextMuted; // N/A
-                        }
-                    } else if (c === 4) { // Fecha
-                        hAlign = "center";
-                        textColor = colorTextMuted;
-                    } else if (c === 5) { // Cliente
-                        hAlign = "left";
-                        isBold = true;
-                    } else if (c === 6) { // Descripción
-                        hAlign = "left";
-                    } else if (c === 7) { // Modelo
-                        hAlign = "center";
-                    } else if (c === 8) { // Serie
-                        hAlign = "center";
-                        isMonospace = true;
-                    } else if (c === 9) { // Tipo Garantía
-                        hAlign = "center";
-                    } else if (c === 10) { // Marca
-                        hAlign = "center";
-                        isBold = true;
-                    } else if (c === 11) { // Enlace OT
-                        hAlign = "left";
-                        if (cell.v && String(cell.v).startsWith("http")) {
-                            textColor = { rgb: "2563EB" };
-                        }
-                    }
-
-                    cell.s = {
-                        font: {
-                            name: isMonospace ? 'Consolas' : fontSegoe,
-                            sz: 9.5,
-                            bold: isBold,
-                            color: textColor
-                        },
-                        fill: { fgColor: rowBg },
-                        alignment: {
-                            horizontal: hAlign,
-                            vertical: "center",
-                            wrapText: (c === 6)
-                        },
-                        border: thinCellBorder
-                    };
-                }
-            }
-
-            // Estilos Fila de Totales
-            const summaryRowIdx = 5 + totalRows;
-            const doubleBottomBorder = {
-                top: { style: "thin", color: colorNavy },
-                bottom: { style: "double", color: colorNavy },
-                left: { style: "thin", color: colorBorderCell },
-                right: { style: "thin", color: colorBorderCell }
-            };
-
-            for (let c = 0; c < headers.length; c++) {
-                const ref = XLSX.utils.encode_cell({ r: summaryRowIdx, c: c });
-                if (ws[ref]) {
-                    ws[ref].s = {
-                        font: { name: fontSegoe, sz: 10, bold: true, color: colorNavy },
-                        fill: { fgColor: { rgb: "E2E8F0" } },
-                        alignment: {
-                            horizontal: (c === 0 ? "right" : (c === 2 ? "center" : "left")),
-                            vertical: "center"
-                        },
-                        border: doubleBottomBorder
-                    };
-                }
-            }
-
-            // Anchos de Columna optimizados
-            ws['!cols'] = [
-                { wch: 6 },  // No.
-                { wch: 14 }, // Unidad
-                { wch: 20 }, // No. OT
-                { wch: 24 }, // No. Orden Marca / Caso
-                { wch: 18 }, // Fecha Ingreso
-                { wch: 34 }, // Cliente
-                { wch: 44 }, // Descripción
-                { wch: 22 }, // Modelo / RMS
-                { wch: 24 }, // Serie
-                { wch: 22 }, // Tipo Garantía
-                { wch: 16 }, // Marca
-                { wch: 42 }  // Enlace OT Digital
-            ];
-
-            // Alturas de Fila
-            const rowHeights = [
-                { hpt: 32 }, // Título
-                { hpt: 20 }, // Subtítulo
-                { hpt: 18 }, // Metadatos
-                { hpt: 10 }, // Espaciador
-                { hpt: 26 }  // Encabezados
-            ];
-            for (let r = 0; r < totalRows; r++) {
-                rowHeights.push({ hpt: 22 });
-            }
-            rowHeights.push({ hpt: 24 }); // Fila de totales
-            ws['!rows'] = rowHeights;
-
-            // Crear Libro y Descargar
-            const wb = XLSX.utils.book_new();
-            const sheetName = ("Garantías " + marcaTitulo).substring(0, 31).replace(/[\\/*?[\]:]/g, '_');
-            XLSX.utils.book_append_sheet(wb, ws, sheetName);
-
-            const marcaClean = marca === 'ALL' ? 'TODAS_LAS_MARCAS' : marca.replace(/[^A-Z0-9]/gi, '_');
-            const fileName = `Reporte_Garantias_${marcaClean}_${desdeMes}${desdeAnio}_a_${hastaMes}${hastaAnio}.xlsx`;
-
-            XLSX.writeFile(wb, fileName);
-
-            if (btnText) btnText.textContent = "¡Reporte Descargado!";
-            setTimeout(() => {
-                if (btnText) btnText.textContent = "Exportar Reporte a Excel";
-                if (btnExport) btnExport.disabled = false;
-            }, 2000);
-
-        } catch (err) {
-            console.error("Error al exportar Excel:", err);
-            alert("Ocurrió un error al generar el archivo Excel: " + err.message);
-            if (btnText) btnText.textContent = "Exportar Reporte a Excel";
-            if (btnExport) btnExport.disabled = false;
-        }
+        const marcaName = fMarca === 'ALL' ? 'TodasLasMarcas' : fMarca.replace(/\s+/g, '_');
+        const filename = `SILVA_Auditoria_Garantias_${marcaName}.xlsx`;
+        XLSX.writeFile(wb, filename);
     };
 
-    // Iniciar cuando el DOM esté listo
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
+    // Inicializar al cargar DOM
+    document.addEventListener('DOMContentLoaded', init);
 })();

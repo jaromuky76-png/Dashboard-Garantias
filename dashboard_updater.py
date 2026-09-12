@@ -123,6 +123,34 @@ def fmt_datetime(v):
     if isinstance(v, datetime.date): return v.strftime('%Y-%m-%d 00:00')
     return ''
 
+def parse_dt(s):
+    if not s or not isinstance(s, str): return None
+    s = s.strip()
+    for fmt in ('%Y-%m-%d %H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d', '%d/%m/%Y %H:%M', '%d/%m/%Y'):
+        try:
+            return datetime.datetime.strptime(s, fmt)
+        except:
+            pass
+    return None
+
+def classify_category(desc, marca, act=""):
+    text = f"{desc} {marca} {act}".upper()
+    if any(k in text for k in ["BTU", "EVAPORADOR", "CONDENSADOR", "SEER", "MINI SPLIT", "MINISPLIT", "AIRE ACONDICIONADO", "AA "]):
+        return "Climatización (A/C)"
+    if any(k in text for k in ["REFRIGERAD", "LAVADORA", "SECADORA", "CONGELADOR", "MICROONDAS", "ESTUFA", "DISPENSADOR", "ENFRIADOR", "EXHIBIDOR"]):
+        return "Línea Blanca"
+    if any(k in text for k in ["TELEVISOR", " TV ", "TV-", "SMART TV", "NANOCELL", "OLED", "PANTALLA", "PARLANTE", "SOUNDBAR", "BARRA DE SONIDO", "AUDIO"]):
+        return "Audio y Video (TV)"
+    if any(k in text for k in ["TRUPER", "PRETUL", "MAKITA", "DEWALT", "MILWAUKEE", "STANLEY", "TALADRO", "ESMERIL", "SIERRA", "BOMBA", "HIDROLAVADORA", "DESBROZADORA", "GENERADOR", "COMPRESOR", "SOLDADOR", "MOTOBOMBA", "PULIDORA"]):
+        return "Herramientas y Maquinaria"
+    if any(k in text for k in ["FORZA", "UPS", "PROTECTOR DE VOLTAJE", "REGULADOR", "BATERIA", "AVTEK", "INVERSOR"]):
+        return "Protección Eléctrica / UPS"
+    if any(k in text for k in ["CERRADURA", "YALE", "CERROJO", "CANDADO"]):
+        return "Cerrajería y Seguridad"
+    if any(k in text for k in ["DUCHA", "LORENZETTI", "FAME", "LAMPARA", "REFLECTOR", "TECNOLITE", "LLAVE", "GRIFO", "MONOMANDO"]):
+        return "Iluminación / Fontanería"
+    return "Otras Categorías"
+
 def load_existing_json(filepath, var_name):
     if not os.path.exists(filepath): return []
     try:
@@ -247,16 +275,21 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
                 actividad_i = next((idx for k, idx in h.items() if "ACTIVIDAD" in k), 9)
                 externo_rnn_i = next((idx for k, idx in h.items() if "EXTERNO/RNN" in k or "EXTERNO" in k), 3)
 
-                # Indices específicos para reportes de marca
-                cli_i = h.get('CLIENTE', -1)
+                # CS specific
                 mod_i = h.get('MODELO', -1)
                 ser_i = next((idx for k, idx in h.items() if "SERIE" in k), -1)
+                fd_i = h.get('FECHA Y HORA DE ENTREGA DE DIAGNOSTICO', -1)
+                ff_i = h.get('FECHA Y HORA DE FINALIZACION DE OT', -1)
+                estatus_i = h.get('ESTATUS', -1)
+
+                # Maestros specific
                 mod_e_i = h.get('MODELO EVARPORADOR', h.get('MODELO EVAPORADOR', -1))
                 mod_c_i = h.get('MODELO DEL CONDENSADOR', h.get('MODELO CONDENSADOR', -1))
                 ser_e_i = h.get('SERIE EVAPORADOR', -1)
                 ser_c_i = h.get('SERIE CONDENSADOR', -1)
                 desc_e_i = h.get('DESCRIPCION DEL EVAPORADOR', -1)
                 desc_c_i = h.get('DESCRIPCION DEL CONDENSADOR', -1)
+                fe_i = h.get('FECHA Y HORA DE FIN DE EJECUCION', -1)
 
                 seg_map = {f"{x.get('unidad_negocio', '')}-{x.get('ot', '')}": x for x in seguimiento_data}
                 continue
@@ -434,15 +467,31 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
                         ser_list = [s for s in (ser_e, ser_c) if s and s not in ('--', '0')]
                         ser = " / ".join(ser_list)
 
-                    is_claim_rep = False
-                    if unidad.upper() == 'CS':
-                        if "DENTRO" in validador_garantia_val or "GARANTIA" in tipo or (no_caso and no_caso not in ("Falta trámite en portal", "DOMICILIO", "N/A", "--")):
-                            is_claim_rep = True
-                    else:
-                        if "RECLAMO" in actividad_val or "GARANTIA" in tipo or (no_caso and no_caso not in ("Falta trámite en portal", "DOMICILIO", "N/A", "--")):
-                            is_claim_rep = True
+                    # Categoría y Tiempos de Respuesta
+                    categoria = classify_category(desc_rep, marca, actividad_val)
+                    estatus_val = safe_str(row[estatus_i] if estatus_i >= 0 and estatus_i < len(row) else None).upper()
+                    
+                    dt_i = parse_dt(fecha)
+                    fd_raw = row[fd_i] if unidad.upper() == 'CS' and fd_i >= 0 and fd_i < len(row) else (row[fe_i] if unidad.upper() != 'CS' and fe_i >= 0 and fe_i < len(row) else None)
+                    ff_raw = row[ff_i] if ff_i >= 0 and ff_i < len(row) else None
+                    
+                    dt_d = parse_dt(fd_raw)
+                    dt_f = parse_dt(ff_raw)
+                    
+                    dias_diag = None
+                    dias_cierre = None
+                    
+                    if dt_i:
+                        if dt_d and dt_d >= dt_i:
+                            d_val = (dt_d - dt_i).total_seconds() / 86400.0
+                            if d_val <= 120:
+                                dias_diag = round(d_val, 1)
+                        if dt_f and dt_f >= dt_i:
+                            f_val = (dt_f - dt_i).total_seconds() / 86400.0
+                            if f_val <= 180:
+                                dias_cierre = round(f_val, 1)
 
-                    if is_claim_rep and ot_n and marca and marca != "DESCONOCIDA":
+                    if ot_n and marca and marca != "DESCONOCIDA":
                         reportes_data.append({
                             "unidad": unidad.upper(),
                             "ot": ot_n,
@@ -458,6 +507,12 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
                             "mes": mes,
                             "mesNum": int(mes_num),
                             "tipo_garantia": tipo if tipo else (validador_garantia_val if unidad.upper() == 'CS' else actividad_val),
+                            "categoria": categoria,
+                            "estatus": estatus_val,
+                            "fecha_diagnostico": fd_raw if isinstance(fd_raw, str) else "",
+                            "fecha_cierre": ff_raw if isinstance(ff_raw, str) else "",
+                            "dias_diagnostico": dias_diag,
+                            "dias_cierre": dias_cierre,
                             "link": link
                         })
                         cnt_rep += 1

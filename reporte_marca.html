@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reporte de Garantías por Marca - SILVA INTERNACIONAL</title>
+    <title>Reporte de Garantías y Análisis Gerencial - SILVA INTERNACIONAL</title>
     <!-- Script de inicialización de tema anti-parpadeo -->
     <script>
         (function() {
@@ -37,6 +37,8 @@
             }
         }
     </script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- SheetJS con soporte de formato ejecutivo (xlsx-js-style) -->
     <script src="xlsx.bundle.js"></script>
     <script>
@@ -118,12 +120,12 @@
             --badge-na-text: #94a3b8;
             --badge-na-border: rgba(100, 116, 139, 0.25);
             --code-bg: rgba(15, 23, 42, 0.7);
-            --code-text: #e2e8f0;
-            --code-border: #1e293b;
-            --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.35), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+            --code-text: #cbd5e1;
+            --code-border: #334155;
+            --card-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.35);
             --btn-period-bg: #1a243b;
             --btn-period-text: #94a3b8;
-            --btn-period-border: #232f48;
+            --btn-period-border: #2d3b59;
         }
 
         body {
@@ -134,18 +136,17 @@
         }
 
         .executive-card {
-            background: var(--bg-card);
+            background-color: var(--bg-card);
             border: 1px solid var(--border-card);
-            border-radius: 1.25rem;
             box-shadow: var(--card-shadow);
-            transition: all 0.2s ease;
+            border-radius: 1rem;
         }
 
         .custom-input {
             background-color: var(--bg-input);
             border: 1px solid var(--border-input);
             color: var(--text-main);
-            transition: all 0.15s ease;
+            transition: border-color 0.15s, box-shadow 0.15s;
         }
         .custom-input:focus {
             outline: none;
@@ -201,7 +202,10 @@
             background-color: var(--row-bg-odd);
         }
         .table-row-item:hover {
-            background-color: var(--tr-hover) !important;
+            background-color: rgba(37, 99, 235, 0.06) !important;
+        }
+        html.dark .table-row-item:hover {
+            background-color: rgba(30, 41, 59, 0.65) !important;
         }
 
         /* Badges */
@@ -295,10 +299,10 @@
                             <span class="text-xs text-slate-400 font-medium">• Centro de Garantías</span>
                         </div>
                         <h1 class="text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-white mt-1">
-                            Reporte de Garantías por Marca
+                            Reporte y Análisis de Casos de Garantía
                         </h1>
                         <p class="text-xs text-slate-500 dark:text-slate-400">
-                            Auditoría de Casos, Trazabilidad de Reclamos y Exportación Ejecutiva
+                            Matriz Mensual por Categoría, Tiempos Promedio de Respuesta y Auditoría de Casos
                         </p>
                     </div>
                 </div>
@@ -341,250 +345,504 @@
                 <a href="seguimiento.html" class="px-3.5 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors">Seguimiento Trámites</a>
                 <a href="reporte_marca.html" class="px-3.5 py-2 rounded-lg bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/25 flex items-center gap-1.5">
                     <span class="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
-                    Reporte Marcas
+                    Reporte Marcas & Gerencial
                 </a>
                 <a href="archivos.html" class="px-3.5 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors">Archivos Resguardados</a>
             </nav>
         </header>
 
-        <!-- Filtros y Controles -->
-        <div class="executive-card p-6 space-y-5">
-            <!-- Fila 1: Marca, Unidad, Buscador -->
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                <div class="md:col-span-4">
-                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider flex items-center justify-between">
-                        <span class="flex items-center gap-1.5">
-                            <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>
-                            Marca a Consultar
+        <!-- SELECTOR DE VISTA: Matriz Gerencial vs Auditoría Detallada -->
+        <div class="p-1.5 rounded-2xl bg-slate-200/80 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 flex flex-wrap items-center justify-between gap-2 shadow-sm">
+            <div class="flex items-center gap-2">
+                <button type="button" id="tab-btn-matriz" onclick="switchMainView('matriz')" class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-xs tracking-wide transition-all cursor-pointer shadow-md bg-blue-600 text-white">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    <span>Matriz Gerencial & Tiempos de Respuesta</span>
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-amber-400 text-slate-950">SOLICITADO</span>
+                </button>
+                <button type="button" id="tab-btn-detalle" onclick="switchMainView('detalle')" class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs tracking-wide transition-all cursor-pointer text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+                    <span>Auditoría Detallada (OTs por Marca)</span>
+                </button>
+            </div>
+            <div class="text-right px-3 text-[11px] text-slate-500 dark:text-slate-400 font-semibold hidden md:block">
+                Consulta analítica consolidada 2025 - 2026
+            </div>
+        </div>
+
+        <!-- ========================================================================================= -->
+        <!-- SECCIÓN 1: VISTA MATRIZ GERENCIAL & TIEMPOS DE RESPUESTA (ACTIVA POR DEFECTO)             -->
+        <!-- ========================================================================================= -->
+        <div id="view-matriz-gerencial" class="space-y-6">
+            
+            <!-- Panel de Controles de la Matriz -->
+            <div class="executive-card p-6 space-y-5">
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                    <!-- Desglose por -->
+                    <div class="md:col-span-4">
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                            Desglosar Columnas Por
+                        </label>
+                        <select id="matriz-desglose" class="custom-input w-full rounded-xl px-4 py-2.5 font-bold text-sm shadow-sm cursor-pointer">
+                            <option value="categoria" selected>Categoría / Familia de Producto (A/C, Línea Blanca, Herramientas...)</option>
+                            <option value="tipo_garantia">Tipo de Garantía (Total, Parcial, No Aplica, Servicio)</option>
+                            <option value="unidad">Unidad de Negocio (Centro de Servicios vs Maestros)</option>
+                        </select>
+                    </div>
+
+                    <!-- Filtro Opcional de Marca -->
+                    <div class="md:col-span-3">
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>
+                            Marca (Opcional)
+                        </label>
+                        <select id="matriz-filtro-marca" class="custom-input w-full rounded-xl px-4 py-2.5 font-semibold text-sm shadow-sm cursor-pointer">
+                            <option value="ALL">Todas las Marcas (General)</option>
+                        </select>
+                    </div>
+
+                    <!-- Botón Exportar Matriz a Excel -->
+                    <div class="md:col-span-5 flex md:justify-end">
+                        <button type="button" onclick="exportarMatrizExcel()" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 text-white px-6 py-2.5 rounded-xl transition-all duration-200 font-bold text-xs flex items-center gap-2.5 shadow-md shadow-emerald-700/25 cursor-pointer border border-emerald-500/20 group w-full md:w-auto justify-center">
+                            <svg class="w-4 h-4 text-emerald-100 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <span>Descargar Informe Gerencial Excel (.xlsx)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Fila de Período y Botones Rápidos -->
+                <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            Rango de Período:
                         </span>
-                        <span id="marca-count-label" class="text-[11px] text-blue-600 dark:text-blue-400 font-semibold">--</span>
-                    </label>
-                    <select id="filtro-marca" class="custom-input w-full rounded-xl px-4 py-2.5 font-bold text-sm shadow-sm cursor-pointer">
-                        <option value="ALL">Todas las Marcas</option>
-                        <!-- Opciones dinámicas -->
-                    </select>
+
+                        <!-- Selector Desde -->
+                        <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border custom-input text-xs">
+                            <span class="text-slate-400 font-semibold">Desde:</span>
+                            <select id="matriz-desde-mes" class="bg-transparent font-bold cursor-pointer focus:outline-none">
+                                <option value="1" selected>ENERO</option>
+                                <option value="2">FEBRERO</option>
+                                <option value="3">MARZO</option>
+                                <option value="4">ABRIL</option>
+                                <option value="5">MAYO</option>
+                                <option value="6">JUNIO</option>
+                                <option value="7">JULIO</option>
+                                <option value="8">AGOSTO</option>
+                                <option value="9">SEPTIEMBRE</option>
+                                <option value="10">OCTUBRE</option>
+                                <option value="11">NOVIEMBRE</option>
+                                <option value="12">DICIEMBRE</option>
+                            </select>
+                            <select id="matriz-desde-anio" class="bg-transparent font-bold cursor-pointer focus:outline-none ml-1">
+                                <option value="2025" selected>2025</option>
+                                <option value="2026">2026</option>
+                            </select>
+                        </div>
+
+                        <!-- Selector Hasta -->
+                        <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border custom-input text-xs">
+                            <span class="text-slate-400 font-semibold">Hasta:</span>
+                            <select id="matriz-hasta-mes" class="bg-transparent font-bold cursor-pointer focus:outline-none">
+                                <option value="1">ENERO</option>
+                                <option value="2">FEBRERO</option>
+                                <option value="3">MARZO</option>
+                                <option value="4">ABRIL</option>
+                                <option value="5" selected>MAYO</option>
+                                <option value="6">JUNIO</option>
+                                <option value="7">JULIO</option>
+                                <option value="8">AGOSTO</option>
+                                <option value="9">SEPTIEMBRE</option>
+                                <option value="10">OCTUBRE</option>
+                                <option value="11">NOVIEMBRE</option>
+                                <option value="12">DICIEMBRE</option>
+                            </select>
+                            <select id="matriz-hasta-anio" class="bg-transparent font-bold cursor-pointer focus:outline-none ml-1">
+                                <option value="2026" selected>2026</option>
+                                <option value="2025">2025</option>
+                            </select>
+                        </div>
+
+                        <!-- Botones Rápidos Segmentados para Matriz -->
+                        <div class="flex flex-wrap items-center gap-1.5 text-xs font-semibold">
+                            <button type="button" id="btn-matriz-quick-ene-may-2026" onclick="setMatrizRangoRapido(2025, 1, 2026, 5, this)" class="btn-periodo px-3 py-1.5 rounded-xl cursor-pointer active">
+                                <span>Ene 2025 - May 2026</span>
+                            </button>
+                            <button type="button" id="btn-matriz-quick-2026" onclick="setMatrizRangoRapido(2026, 1, 2026, 12, this)" class="btn-periodo px-3 py-1.5 rounded-xl cursor-pointer">
+                                <span>Todo 2026</span>
+                            </button>
+                            <button type="button" id="btn-matriz-quick-2025" onclick="setMatrizRangoRapido(2025, 1, 2025, 12, this)" class="btn-periodo px-3 py-1.5 rounded-xl cursor-pointer">
+                                <span>Todo 2025</span>
+                            </button>
+                            <button type="button" id="btn-matriz-quick-todo" onclick="setMatrizRangoRapido(2025, 1, 2026, 12, this)" class="btn-periodo px-3 py-1.5 rounded-xl cursor-pointer">
+                                <span>Historial Completo</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div class="md:col-span-3">
-                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider flex items-center gap-1.5">
-                        <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
-                        Unidad de Negocio
-                    </label>
-                    <select id="filtro-unidad" class="custom-input w-full rounded-xl px-4 py-2.5 font-medium text-sm shadow-sm cursor-pointer">
-                        <option value="ALL">Todas las Unidades (CS + Maestros)</option>
-                        <option value="CS">Centro de Servicios (CS)</option>
-                        <option value="MAESTROS">Maestros</option>
-                    </select>
-                </div>
-                <div class="md:col-span-5">
-                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider flex items-center gap-1.5">
-                        <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                        Búsqueda Instantánea
-                    </label>
-                    <div class="relative">
-                        <input type="text" id="buscador-general" placeholder="Buscar por No. OT, Cliente, Caso Marca, RMS, Serie..." class="custom-input w-full rounded-xl pl-10 pr-10 py-2.5 text-sm shadow-sm">
-                        <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                        </svg>
-                        <button type="button" id="btn-clear-search" onclick="limpiarBuscador()" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-white hidden cursor-pointer" title="Limpiar búsqueda">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                        </button>
+
+                <!-- Nota sobre tiempos y cobertura -->
+                <div class="flex items-start gap-3 text-xs rounded-xl p-3.5 border bg-blue-50/60 dark:bg-slate-900/60 border-blue-200 dark:border-slate-800 text-slate-700 dark:text-slate-300">
+                    <div class="p-1 rounded-lg bg-blue-600 text-white mt-0.5 shrink-0">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <div class="leading-relaxed">
+                        <strong class="text-blue-900 dark:text-white">Criterio de Cálculo de Casos y Tiempos de Respuesta:</strong>
+                        Los casos reportados se contabilizan según su <strong>fecha de ingreso</strong>, incluyendo órdenes activas, en proceso, canceladas y cerradas. 
+                        El <strong>Tiempo de Diagnóstico</strong> mide desde el ingreso hasta la entrega del dictamen técnico (~2.1 días en CS y ~4.1 días en visitas técnicas de Maestros). 
+                        El <strong>Tiempo de Cierre</strong> mide desde el ingreso hasta la finalización y entrega física del equipo al cliente.
                     </div>
                 </div>
             </div>
 
-            <!-- Fila 2: Período y Botón Exportar -->
-            <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
-                <div class="flex flex-wrap items-center gap-3">
-                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                        <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        Período:
-                    </span>
-                    
-                    <!-- Selector Desde -->
-                    <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border custom-input text-xs">
-                        <span class="text-slate-400 font-semibold">Desde:</span>
-                        <select id="filtro-desde-mes" class="bg-transparent font-bold cursor-pointer focus:outline-none">
-                            <option value="1">ENERO</option>
-                            <option value="2">FEBRERO</option>
-                            <option value="3">MARZO</option>
-                            <option value="4">ABRIL</option>
-                            <option value="5">MAYO</option>
-                            <option value="6">JUNIO</option>
-                            <option value="7">JULIO</option>
-                            <option value="8">AGOSTO</option>
-                            <option value="9">SEPTIEMBRE</option>
-                            <option value="10">OCTUBRE</option>
-                            <option value="11">NOVIEMBRE</option>
-                            <option value="12">DICIEMBRE</option>
-                        </select>
-                        <select id="filtro-desde-anio" class="bg-transparent font-bold cursor-pointer focus:outline-none ml-1">
-                            <option value="2026">2026</option>
-                            <option value="2025">2025</option>
-                        </select>
+            <!-- 4 Tarjetas KPI Gerenciales -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- KPI 1: Casos Reportados -->
+                <div class="executive-card p-5 relative overflow-hidden group hover:translate-y-[-2px] transition-transform border-t-4 border-t-blue-600">
+                    <div class="flex items-center justify-between">
+                        <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Casos Reportados</div>
+                        <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400 flex items-center justify-center font-bold">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                        </div>
                     </div>
-
-                    <!-- Selector Hasta -->
-                    <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border custom-input text-xs">
-                        <span class="text-slate-400 font-semibold">Hasta:</span>
-                        <select id="filtro-hasta-mes" class="bg-transparent font-bold cursor-pointer focus:outline-none">
-                            <option value="1">ENERO</option>
-                            <option value="2">FEBRERO</option>
-                            <option value="3">MARZO</option>
-                            <option value="4">ABRIL</option>
-                            <option value="5">MAYO</option>
-                            <option value="6">JUNIO</option>
-                            <option value="7">JULIO</option>
-                            <option value="8" selected>AGOSTO</option>
-                            <option value="9">SEPTIEMBRE</option>
-                            <option value="10">OCTUBRE</option>
-                            <option value="11">NOVIEMBRE</option>
-                            <option value="12">DICIEMBRE</option>
-                        </select>
-                        <select id="filtro-hasta-anio" class="bg-transparent font-bold cursor-pointer focus:outline-none ml-1">
-                            <option value="2026" selected>2026</option>
-                            <option value="2025">2025</option>
-                        </select>
-                    </div>
-
-                    <!-- Botones Rápidos Segmentados -->
-                    <div class="flex flex-wrap items-center gap-1.5 text-xs font-semibold">
-                        <button type="button" id="btn-quick-ene-ago-2026" onclick="setRangoRapido(2026, 1, 2026, 8, this)" class="btn-periodo px-3 py-1.5 rounded-xl cursor-pointer active">
-                            <span>Ene - Ago 2026</span>
-                        </button>
-                        <button type="button" id="btn-quick-2026" onclick="setRangoRapido(2026, 1, 2026, 12, this)" class="btn-periodo px-3 py-1.5 rounded-xl cursor-pointer">
-                            <span>Todo 2026</span>
-                        </button>
-                        <button type="button" id="btn-quick-2025" onclick="setRangoRapido(2025, 1, 2025, 12, this)" class="btn-periodo px-3 py-1.5 rounded-xl cursor-pointer">
-                            <span>Todo 2025</span>
-                        </button>
-                        <button type="button" id="btn-quick-todo" onclick="setRangoRapido(2025, 1, 2026, 12, this)" class="btn-periodo px-3 py-1.5 rounded-xl cursor-pointer">
-                            <span>Historial Completo (2025-2026)</span>
-                        </button>
-                    </div>
+                    <div id="matriz-kpi-total" class="text-3xl font-black text-slate-900 dark:text-white mt-2 tracking-tight">0</div>
+                    <div id="matriz-kpi-periodo-sub" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Ene 2025 - May 2026 (Abiertos y Cerrados)</div>
                 </div>
 
-                <!-- Botón de Descarga Excel -->
-                <div>
-                    <button id="btn-exportar-excel" onclick="exportarExcel()" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 text-white px-5 py-2.5 rounded-xl transition-all duration-200 font-bold text-xs flex items-center gap-2.5 shadow-md shadow-emerald-700/25 cursor-pointer border border-emerald-500/20 group">
-                        <svg class="w-4 h-4 text-emerald-100 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                        </svg>
-                        <span id="btn-exportar-texto">Exportar Reporte a Excel</span>
-                    </button>
+                <!-- KPI 2: Tiempo de Respuesta Diagnóstico -->
+                <div class="executive-card p-5 relative overflow-hidden group hover:translate-y-[-2px] transition-transform border-t-4 border-t-emerald-500">
+                    <div class="flex items-center justify-between">
+                        <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tiempo Prom. Diagnóstico</div>
+                        <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 flex items-center justify-center font-bold">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </div>
+                    </div>
+                    <div id="matriz-kpi-diag" class="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-2 tracking-tight">0.0 días</div>
+                    <div id="matriz-kpi-diag-sub" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">Ingreso a Dictamen Técnico (~49 hrs)</div>
+                </div>
+
+                <!-- KPI 3: Tiempo Promedio de Cierre Total -->
+                <div class="executive-card p-5 relative overflow-hidden group hover:translate-y-[-2px] transition-transform border-t-4 border-t-purple-600">
+                    <div class="flex items-center justify-between">
+                        <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tiempo Prom. Cierre / Entrega</div>
+                        <div class="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400 flex items-center justify-center font-bold">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </div>
+                    </div>
+                    <div id="matriz-kpi-cierre" class="text-3xl font-black text-purple-600 dark:text-purple-400 mt-2 tracking-tight">0.0 días</div>
+                    <div id="matriz-kpi-cierre-sub" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">Ciclo Completo de Garantía</div>
+                </div>
+
+                <!-- KPI 4: Categoría Principal -->
+                <div class="executive-card p-5 relative overflow-hidden group hover:translate-y-[-2px] transition-transform border-t-4 border-t-amber-500">
+                    <div class="flex items-center justify-between">
+                        <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Categoría Mayoritaria</div>
+                        <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400 flex items-center justify-center font-bold">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        </div>
+                    </div>
+                    <div id="matriz-kpi-cat-principal" class="text-xl font-black text-slate-900 dark:text-white mt-2 tracking-tight truncate">--</div>
+                    <div id="matriz-kpi-cat-sub" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">0% del total de reclamos</div>
                 </div>
             </div>
 
-            <!-- Nota Informativa Corporativa -->
-            <div class="flex items-start gap-3 text-xs rounded-xl p-3.5 border bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
-                <div class="p-1 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <!-- Gráficos de Análisis Ejecutivo -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Gráfico 1: Casos Mensuales -->
+                <div class="lg:col-span-7 executive-card p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 class="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                                Casos Reportados por Mes (Evolución)
+                            </h2>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Volumen mensual sin importar estado de cierre</p>
+                        </div>
+                        <div class="p-2 rounded-lg bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                        </div>
+                    </div>
+                    <div class="h-64 md:h-72 relative">
+                        <canvas id="chart-casos-mensual"></canvas>
+                    </div>
                 </div>
-                <div class="leading-relaxed">
-                    <strong class="text-slate-900 dark:text-white">Control de Reclamos por Fabricante:</strong>
-                    Las marcas <strong class="text-blue-600 dark:text-blue-400">HISENSE</strong> (orden numérica de 9 dígitos) y <strong class="text-purple-600 dark:text-purple-400">LG</strong> (código RNN) gestionan trámites ante portales oficiales de fábrica. En todas las demás marcas autorizadas (Truper, Forza, Yale, Westinghouse, etc.), el caso se acredita y liquida formalmente mediante nuestro <strong class="text-emerald-600 dark:text-emerald-400">No. de OT interna</strong>.
+
+                <!-- Gráfico 2: Tendencia de Tiempos de Respuesta -->
+                <div class="lg:col-span-5 executive-card p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 class="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                                Tiempos de Respuesta Promedio (Días)
+                            </h2>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Diagnóstico vs Cierre / Entrega Total</p>
+                        </div>
+                        <div class="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                        </div>
+                    </div>
+                    <div class="h-64 md:h-72 relative">
+                        <canvas id="chart-tiempos-respuesta"></canvas>
+                    </div>
                 </div>
             </div>
+
+            <!-- Tabla Matriz Dinámica Mensual -->
+            <div class="executive-card overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-900/30">
+                    <div>
+                        <h2 class="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                            Matriz Consolidada de Casos y Tiempos de Respuesta
+                        </h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            Valores mensuales consolidados por período y métricas de resolución
+                        </p>
+                    </div>
+                    <div class="text-xs font-bold text-slate-500 dark:text-slate-400">
+                        <span id="matriz-total-meses-label">17 meses</span> en consulta
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto max-h-[600px]">
+                    <table class="w-full text-left" id="tabla-matriz-mensual">
+                        <thead id="matriz-thead">
+                            <!-- Columnas dinámicas generadas según el desglose -->
+                        </thead>
+                        <tbody id="matriz-tbody">
+                            <!-- Filas dinámicas generadas por JS -->
+                        </tbody>
+                        <tfoot id="matriz-tfoot">
+                            <!-- Pie con totales y promedios ponderados -->
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
         </div>
 
-        <!-- Tarjetas Métricas KPI Ejecutivas -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <!-- KPI 1: Total Casos -->
-            <div class="executive-card p-5 relative overflow-hidden group hover:translate-y-[-2px] transition-transform border-t-4 border-t-blue-600">
-                <div class="flex items-center justify-between">
-                    <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Casos Marca</div>
-                    <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400 flex items-center justify-center font-bold">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+        <!-- ========================================================================================= -->
+        <!-- SECCIÓN 2: VISTA AUDITORÍA DETALLADA (LISTADO DE OTs Y MARCAS)                            -->
+        <!-- ========================================================================================= -->
+        <div id="view-auditoria-detallada" class="hidden space-y-6">
+            <!-- Filtros y Controles -->
+            <div class="executive-card p-6 space-y-5">
+                <!-- Fila 1: Marca, Unidad, Buscador -->
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                    <div class="md:col-span-4">
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider flex items-center justify-between">
+                            <span class="flex items-center gap-1.5">
+                                <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>
+                                Marca a Auditar
+                            </span>
+                            <span id="marca-count-label" class="text-[11px] text-blue-600 dark:text-blue-400 font-semibold">--</span>
+                        </label>
+                        <select id="filtro-marca" class="custom-input w-full rounded-xl px-4 py-2.5 font-bold text-sm shadow-sm cursor-pointer">
+                            <option value="ALL">Todas las Marcas</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-3">
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                            Unidad de Negocio
+                        </label>
+                        <select id="filtro-unidad" class="custom-input w-full rounded-xl px-4 py-2.5 font-medium text-sm shadow-sm cursor-pointer">
+                            <option value="ALL">Todas las Unidades (CS + Maestros)</option>
+                            <option value="CS">Centro de Servicios (CS)</option>
+                            <option value="MAESTROS">Maestros</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-5">
+                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            Búsqueda Instantánea
+                        </label>
+                        <div class="relative">
+                            <input type="text" id="buscador-general" placeholder="Buscar por No. OT, Cliente, Caso Marca, Serie, Categoría..." class="custom-input w-full rounded-xl pl-10 pr-10 py-2.5 text-sm shadow-sm">
+                            <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                            <button type="button" id="btn-clear-search" onclick="limpiarBuscador()" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-white hidden cursor-pointer" title="Limpiar búsqueda">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
-                <div id="kpi-total" class="text-3xl font-black text-slate-900 dark:text-white mt-2 tracking-tight">0</div>
-                <div id="kpi-periodo-desc" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">En período seleccionado</div>
-            </div>
 
-            <!-- KPI 2: CS -->
-            <div class="executive-card p-5 relative overflow-hidden group hover:translate-y-[-2px] transition-transform border-t-4 border-t-sky-500">
-                <div class="flex items-center justify-between">
-                    <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Centro de Servicios (CS)</div>
-                    <div class="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-950 dark:text-sky-400 flex items-center justify-center font-bold">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                <!-- Fila 2: Período y Botón Exportar -->
+                <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            Período:
+                        </span>
+                        
+                        <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border custom-input text-xs">
+                            <span class="text-slate-400 font-semibold">Desde:</span>
+                            <select id="filtro-desde-mes" class="bg-transparent font-bold cursor-pointer focus:outline-none">
+                                <option value="1">ENERO</option>
+                                <option value="2">FEBRERO</option>
+                                <option value="3">MARZO</option>
+                                <option value="4">ABRIL</option>
+                                <option value="5">MAYO</option>
+                                <option value="6">JUNIO</option>
+                                <option value="7">JULIO</option>
+                                <option value="8">AGOSTO</option>
+                                <option value="9">SEPTIEMBRE</option>
+                                <option value="10">OCTUBRE</option>
+                                <option value="11">NOVIEMBRE</option>
+                                <option value="12">DICIEMBRE</option>
+                            </select>
+                            <select id="filtro-desde-anio" class="bg-transparent font-bold cursor-pointer focus:outline-none ml-1">
+                                <option value="2026">2026</option>
+                                <option value="2025">2025</option>
+                            </select>
+                        </div>
+
+                        <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border custom-input text-xs">
+                            <span class="text-slate-400 font-semibold">Hasta:</span>
+                            <select id="filtro-hasta-mes" class="bg-transparent font-bold cursor-pointer focus:outline-none">
+                                <option value="1">ENERO</option>
+                                <option value="2">FEBRERO</option>
+                                <option value="3">MARZO</option>
+                                <option value="4">ABRIL</option>
+                                <option value="5">MAYO</option>
+                                <option value="6">JUNIO</option>
+                                <option value="7">JULIO</option>
+                                <option value="8" selected>AGOSTO</option>
+                                <option value="9">SEPTIEMBRE</option>
+                                <option value="10">OCTUBRE</option>
+                                <option value="11">NOVIEMBRE</option>
+                                <option value="12">DICIEMBRE</option>
+                            </select>
+                            <select id="filtro-hasta-anio" class="bg-transparent font-bold cursor-pointer focus:outline-none ml-1">
+                                <option value="2026" selected>2026</option>
+                                <option value="2025">2025</option>
+                            </select>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-1.5 text-xs font-semibold">
+                            <button type="button" id="btn-quick-ene-ago-2026" onclick="setRangoRapido(2026, 1, 2026, 8, this)" class="btn-periodo px-3 py-1.5 rounded-xl cursor-pointer active">
+                                <span>Ene - Ago 2026</span>
+                            </button>
+                            <button type="button" id="btn-quick-2026" onclick="setRangoRapido(2026, 1, 2026, 12, this)" class="btn-periodo px-3 py-1.5 rounded-xl cursor-pointer">
+                                <span>Todo 2026</span>
+                            </button>
+                            <button type="button" id="btn-quick-2025" onclick="setRangoRapido(2025, 1, 2025, 12, this)" class="btn-periodo px-3 py-1.5 rounded-xl cursor-pointer">
+                                <span>Todo 2025</span>
+                            </button>
+                            <button type="button" id="btn-quick-todo" onclick="setRangoRapido(2025, 1, 2026, 12, this)" class="btn-periodo px-3 py-1.5 rounded-xl cursor-pointer">
+                                <span>Historial Completo (2025-2026)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Botón de Descarga Excel Detalle -->
+                    <div>
+                        <button id="btn-exportar-excel" onclick="exportarExcel()" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 text-white px-5 py-2.5 rounded-xl transition-all duration-200 font-bold text-xs flex items-center gap-2.5 shadow-md shadow-emerald-700/25 cursor-pointer border border-emerald-500/20 group">
+                            <svg class="w-4 h-4 text-emerald-100 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <span id="btn-exportar-texto">Exportar Detalle a Excel</span>
+                        </button>
                     </div>
                 </div>
-                <div id="kpi-cs" class="text-3xl font-black text-sky-600 dark:text-sky-400 mt-2 tracking-tight">0</div>
-                <div id="kpi-cs-pct" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">0% del total</div>
             </div>
 
-            <!-- KPI 3: Maestros -->
-            <div class="executive-card p-5 relative overflow-hidden group hover:translate-y-[-2px] transition-transform border-t-4 border-t-purple-600">
-                <div class="flex items-center justify-between">
-                    <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Maestros</div>
-                    <div class="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400 flex items-center justify-center font-bold">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"></path></svg>
+            <!-- Tarjetas Métricas KPI Detalle -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="executive-card p-5 relative overflow-hidden group hover:translate-y-[-2px] transition-transform border-t-4 border-t-blue-600">
+                    <div class="flex items-center justify-between">
+                        <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Casos Marca</div>
+                        <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400 flex items-center justify-center font-bold">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                        </div>
+                    </div>
+                    <div id="kpi-total" class="text-3xl font-black text-slate-900 dark:text-white mt-2 tracking-tight">0</div>
+                    <div id="kpi-periodo-desc" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">En período seleccionado</div>
+                </div>
+
+                <div class="executive-card p-5 relative overflow-hidden group hover:translate-y-[-2px] transition-transform border-t-4 border-t-sky-500">
+                    <div class="flex items-center justify-between">
+                        <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Centro de Servicios (CS)</div>
+                        <div class="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-950 dark:text-sky-400 flex items-center justify-center font-bold">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                        </div>
+                    </div>
+                    <div id="kpi-cs" class="text-3xl font-black text-sky-600 dark:text-sky-400 mt-2 tracking-tight">0</div>
+                    <div id="kpi-cs-pct" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">0% del total</div>
+                </div>
+
+                <div class="executive-card p-5 relative overflow-hidden group hover:translate-y-[-2px] transition-transform border-t-4 border-t-purple-600">
+                    <div class="flex items-center justify-between">
+                        <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Maestros</div>
+                        <div class="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400 flex items-center justify-center font-bold">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"></path></svg>
+                        </div>
+                    </div>
+                    <div id="kpi-maestros" class="text-3xl font-black text-purple-600 dark:text-purple-400 mt-2 tracking-tight">0</div>
+                    <div id="kpi-maestros-pct" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">0% del total</div>
+                </div>
+
+                <div class="executive-card p-5 relative overflow-hidden group hover:translate-y-[-2px] transition-transform border-t-4 border-t-emerald-500">
+                    <div class="flex items-center justify-between">
+                        <div id="kpi-con-caso-title" class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Con No. Orden Marca</div>
+                        <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 flex items-center justify-center font-bold">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                        </div>
+                    </div>
+                    <div id="kpi-con-caso" class="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-2 tracking-tight">0</div>
+                    <div id="kpi-con-caso-pct" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">0 con código registrado</div>
+                </div>
+            </div>
+
+            <!-- Tabla de Datos Detalle -->
+            <div class="executive-card overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-900/30">
+                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                        Mostrando <span id="table-showing-start" class="font-bold text-slate-900 dark:text-white">0</span> - <span id="table-showing-end" class="font-bold text-slate-900 dark:text-white">0</span> de <span id="table-showing-total" class="font-bold text-slate-900 dark:text-white">0</span> casos
+                    </div>
+                    <div class="flex items-center gap-2 text-xs">
+                        <span class="text-slate-500 dark:text-slate-400">Filas por página:</span>
+                        <select id="paginacion-tamano" onchange="cambiarTamanoPagina(this.value)" class="custom-input rounded-lg px-2.5 py-1 text-xs font-bold cursor-pointer">
+                            <option value="25" selected>25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                            <option value="99999">Todos</option>
+                        </select>
                     </div>
                 </div>
-                <div id="kpi-maestros" class="text-3xl font-black text-purple-600 dark:text-purple-400 mt-2 tracking-tight">0</div>
-                <div id="kpi-maestros-pct" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">0% del total</div>
-            </div>
 
-            <!-- KPI 4: Con Caso / Control Oficial -->
-            <div class="executive-card p-5 relative overflow-hidden group hover:translate-y-[-2px] transition-transform border-t-4 border-t-emerald-500">
-                <div class="flex items-center justify-between">
-                    <div id="kpi-con-caso-title" class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Con No. Orden Marca</div>
-                    <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 flex items-center justify-center font-bold">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                <div class="overflow-x-auto max-h-[640px]">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr>
+                                <th class="w-20">Unidad</th>
+                                <th class="w-28">No. OT</th>
+                                <th class="w-36">No. Orden Marca</th>
+                                <th class="w-36">Fecha Ingreso</th>
+                                <th class="w-64">Nombre del Cliente</th>
+                                <th>Descripción del Producto</th>
+                                <th class="w-36">Categoría</th>
+                                <th class="w-36">Serie del Equipo</th>
+                                <th class="w-28">Tiempo Diag</th>
+                                <th class="w-28">Tiempo Cierre</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-cuerpo">
+                            <!-- Filas dinámicas generadas por JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/30">
+                    <div id="paginador-info" class="text-xs font-medium text-slate-500 dark:text-slate-400">
+                        Página 1 de 1
                     </div>
-                </div>
-                <div id="kpi-con-caso" class="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-2 tracking-tight">0</div>
-                <div id="kpi-con-caso-pct" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">0 con código registrado</div>
-            </div>
-        </div>
-
-        <!-- Tabla de Datos Ejecutiva -->
-        <div class="executive-card overflow-hidden">
-            <!-- Barra superior de la tabla -->
-            <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-900/30">
-                <div class="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                    Mostrando <span id="table-showing-start" class="font-bold text-slate-900 dark:text-white">0</span> - <span id="table-showing-end" class="font-bold text-slate-900 dark:text-white">0</span> de <span id="table-showing-total" class="font-bold text-slate-900 dark:text-white">0</span> casos
-                </div>
-                <div class="flex items-center gap-2 text-xs">
-                    <span class="text-slate-500 dark:text-slate-400">Filas por página:</span>
-                    <select id="paginacion-tamano" onchange="cambiarTamanoPagina(this.value)" class="custom-input rounded-lg px-2.5 py-1 text-xs font-bold cursor-pointer">
-                        <option value="25" selected>25</option>
-                        <option value="50">50</option>
-                        <option value="100">100</option>
-                        <option value="99999">Todos</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- Contenedor de la tabla -->
-            <div class="overflow-x-auto max-h-[640px]">
-                <table class="w-full text-left">
-                    <thead>
-                        <tr>
-                            <th class="w-20">Unidad</th>
-                            <th class="w-28">No. OT</th>
-                            <th class="w-36">No. Orden Marca</th>
-                            <th class="w-36">Fecha Ingreso</th>
-                            <th class="w-64">Nombre del Cliente</th>
-                            <th>Descripción del Producto</th>
-                            <th class="w-36">Modelo / RMS</th>
-                            <th class="w-36">Serie del Equipo</th>
-                            <th class="w-32">Tipo Garantía</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabla-cuerpo">
-                        <!-- Filas dinámicas generadas por JS -->
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Paginador inferior -->
-            <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/30">
-                <div id="paginador-info" class="text-xs font-medium text-slate-500 dark:text-slate-400">
-                    Página 1 de 1
-                </div>
-                <div class="flex items-center gap-2">
-                    <button id="btn-pag-prev" onclick="cambiarPagina(-1)" class="px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed custom-input hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">Anterior</button>
-                    <button id="btn-pag-next" onclick="cambiarPagina(1)" class="px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed custom-input hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">Siguiente</button>
+                    <div class="flex items-center gap-2">
+                        <button id="btn-pag-prev" onclick="cambiarPagina(-1)" class="px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed custom-input hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">Anterior</button>
+                        <button id="btn-pag-next" onclick="cambiarPagina(1)" class="px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed custom-input hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">Siguiente</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -605,6 +863,10 @@
             } else {
                 btnLight.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer bg-white text-blue-600 shadow-sm border border-slate-200/80';
                 btnDark.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer text-slate-500 hover:text-slate-900';
+            }
+
+            if (window.refreshReporteCharts) {
+                window.refreshReporteCharts();
             }
         }
 
