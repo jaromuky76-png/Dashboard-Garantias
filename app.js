@@ -453,6 +453,11 @@ function renderChart(brandData) {
         brandChartInstance.destroy();
     }
 
+    const isDark = document.documentElement.classList.contains('dark');
+    const tickColor = isDark ? '#94a3b8' : '#64748b';
+    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+    const legendColor = isDark ? '#f1f5f9' : '#0f172a';
+
     brandChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -461,15 +466,17 @@ function renderChart(brandData) {
                 {
                     label: 'Garantía Total',
                     data: dTotal,
-                    backgroundColor: 'rgba(239, 68, 68, 0.8)', // red-500
+                    backgroundColor: 'rgba(239, 68, 68, 0.85)', // red-500
                     borderColor: 'rgb(239, 68, 68)',
+                    borderRadius: 4,
                     borderWidth: 1
                 },
                 {
                     label: 'Garantía Parcial',
                     data: dParcial,
-                    backgroundColor: 'rgba(245, 158, 11, 0.8)', // amber-500
+                    backgroundColor: 'rgba(245, 158, 11, 0.85)', // amber-500
                     borderColor: 'rgb(245, 158, 11)',
+                    borderRadius: 4,
                     borderWidth: 1
                 }
             ]
@@ -480,18 +487,18 @@ function renderChart(brandData) {
             scales: {
                 x: {
                     stacked: true,
-                    ticks: { color: '#94a3b8' },
-                    grid: { color: 'rgba(255,255,255,0.05)' }
+                    ticks: { color: tickColor, font: { family: 'Inter', size: 11, weight: '600' } },
+                    grid: { color: gridColor }
                 },
                 y: {
                     stacked: true,
-                    ticks: { color: '#94a3b8' },
-                    grid: { color: 'rgba(255,255,255,0.05)' }
+                    ticks: { color: tickColor, font: { family: 'Inter', size: 11 } },
+                    grid: { color: gridColor }
                 }
             },
             plugins: {
                 legend: {
-                    labels: { color: '#e2e8f0' }
+                    labels: { color: legendColor, font: { family: 'Inter', size: 12, weight: '700' } }
                 },
                 tooltip: {
                     mode: 'index',
@@ -502,10 +509,16 @@ function renderChart(brandData) {
     });
 }
 
+window.refreshBrandChart = function() {
+    if (window.byBrand) {
+        renderChart(window.byBrand);
+    }
+};
+
 function renderWorstProductsList(filterBrand) {
     const container = document.getElementById('worst-products-list');
     if(!window.aggregatedProducts || window.aggregatedProducts.length === 0) {
-        container.innerHTML = '<p class="text-slate-500 text-center text-sm py-8">Esperando datos...</p>';
+        container.innerHTML = '<p class="text-slate-400 text-center text-sm py-8 font-medium">Esperando datos...</p>';
         return;
     }
 
@@ -517,28 +530,35 @@ function renderWorstProductsList(filterBrand) {
     const top5 = products.slice(0, 5);
     
     if(top5.length === 0) {
-        container.innerHTML = '<p class="text-slate-500 text-center text-sm py-8">No hay datos para esta marca.</p>';
+        container.innerHTML = '<p class="text-slate-400 text-center text-sm py-8 font-medium">No hay datos para esta marca.</p>';
         return;
     }
 
-    container.innerHTML = top5.map((p, index) => `
-        <div class="flex items-center space-x-3 p-3 rounded-lg bg-slate-800/50 border border-slate-700/50 hover:bg-slate-700/50 transition-all group">
-            <div class="flex-shrink-0 w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold ${index === 0 ? 'text-red-500' : 'text-slate-400'}">
-                #${index + 1}
-            </div>
-            <div class="flex-grow min-w-0">
-                <div class="flex justify-between items-start">
-                    <p class="text-xs font-bold text-slate-500 uppercase truncate">${p.marca}</p>
-                    <span class="text-[10px] font-mono text-slate-500">${p.rms}</span>
+    container.innerHTML = top5.map((p, index) => {
+        const isTop = index === 0;
+        const rankBadge = isTop 
+            ? 'bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 font-black' 
+            : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700 font-bold';
+
+        return `
+            <div class="flex items-center space-x-3 p-3 rounded-xl bg-slate-50/90 dark:bg-slate-800/40 border border-slate-200/90 dark:border-slate-700/60 hover:bg-white dark:hover:bg-slate-800/80 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm transition-all group">
+                <div class="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center text-xs ${rankBadge}">
+                    #${index + 1}
                 </div>
-                <p class="text-sm font-medium text-white truncate" title="${p.descripcion}">${p.descripcion}</p>
+                <div class="flex-grow min-w-0">
+                    <div class="flex justify-between items-center mb-0.5">
+                        <span class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">${p.marca}</span>
+                        <span class="text-[10px] font-mono text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900/60 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 font-semibold">${p.rms}</span>
+                    </div>
+                    <p class="text-xs font-bold text-slate-800 dark:text-slate-100 truncate" title="${p.descripcion}">${p.descripcion}</p>
+                </div>
+                <div class="flex-shrink-0 text-right pl-2">
+                    <p class="text-sm font-black text-slate-900 dark:text-white leading-none">${p.sum}</p>
+                    <p class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase mt-0.5">Fallos</p>
+                </div>
             </div>
-            <div class="flex-shrink-0 text-right">
-                <p class="text-xs font-bold text-white">${p.sum}</p>
-                <p class="text-[9px] text-slate-500 uppercase">Fallos</p>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 function updateComparator() {
@@ -552,11 +572,15 @@ function updateComparator() {
 function renderComparatorCard(containerId, brandName) {
     const container = document.getElementById(containerId);
     if(!brandName) {
-        container.innerHTML = '<p class="text-slate-500 text-center py-12 italic">Seleccione una marca para comparar...</p>';
+        container.innerHTML = '<p class="text-slate-400 text-center py-12 italic text-sm">Seleccione una marca para comparar...</p>';
         return;
     }
 
     const data = window.byBrand[brandName];
+    if(!data) {
+        container.innerHTML = '<p class="text-slate-400 text-center py-12 italic text-sm">No hay datos para esta marca</p>';
+        return;
+    }
     const topProduct = window.aggregatedProducts.find(p => p.marca === brandName);
 
     const parcialRate = ((data.parcial / data.sum) * 100).toFixed(1);
@@ -565,43 +589,47 @@ function renderComparatorCard(containerId, brandName) {
     container.innerHTML = `
         <div class="animate-fadeIn">
             <div class="flex justify-between items-center mb-6">
-                <h3 class="text-2xl font-black text-white italic tracking-tighter">${brandName}</h3>
+                <h3 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight">${brandName}</h3>
                 <div class="text-right">
-                    <p class="text-xs text-slate-500 uppercase font-bold">Total Reclamos</p>
-                    <p class="text-3xl font-black text-blue-400">${data.sum}</p>
+                    <p class="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold">Total Reclamos</p>
+                    <p class="text-3xl font-black text-blue-600 dark:text-blue-400">${data.sum}</p>
                 </div>
             </div>
 
-            <div class="space-y-4 mb-8">
+            <div class="space-y-4 mb-6">
                 <div>
                     <div class="flex justify-between text-xs mb-1">
-                        <span class="text-slate-400">Garantías Totales (${totalRate}%)</span>
-                        <span class="text-red-400 font-bold">${data.total}</span>
+                        <span class="text-slate-600 dark:text-slate-400 font-medium">Garantías Totales (${totalRate}%)</span>
+                        <span class="text-red-600 dark:text-red-400 font-bold">${data.total}</span>
                     </div>
-                    <div class="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
-                        <div class="bg-red-500 h-full" style="width: ${totalRate}%"></div>
+                    <div class="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                        <div class="bg-red-500 h-full rounded-full" style="width: ${totalRate}%"></div>
                     </div>
                 </div>
                 <div>
                     <div class="flex justify-between text-xs mb-1">
-                        <span class="text-slate-400">Garantías Parciales (${parcialRate}%)</span>
-                        <span class="text-yellow-400 font-bold">${data.parcial}</span>
+                        <span class="text-slate-600 dark:text-slate-400 font-medium">Garantías Parciales (${parcialRate}%)</span>
+                        <span class="text-amber-600 dark:text-amber-400 font-bold">${data.parcial}</span>
                     </div>
-                    <div class="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
-                        <div class="bg-yellow-500 h-full" style="width: ${parcialRate}%"></div>
+                    <div class="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                        <div class="bg-amber-500 h-full rounded-full" style="width: ${parcialRate}%"></div>
                     </div>
                 </div>
             </div>
 
-            <div class="bg-dark/40 rounded-lg p-4 border border-slate-700">
-                <p class="text-[10px] text-slate-500 uppercase font-bold mb-2">Peor Producto (RMS)</p>
-                <p class="text-white font-bold text-sm mb-1">${topProduct.rms}</p>
-                <p class="text-xs text-slate-400 line-clamp-2">${topProduct.descripcion}</p>
-                <div class="mt-2 flex justify-between items-center">
-                    <span class="text-[10px] text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full font-bold">Crítico</span>
-                    <span class="text-xs font-bold text-white">${topProduct.sum} Fallos</span>
+            ${topProduct ? `
+            <div class="bg-white dark:bg-slate-900/60 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm">
+                <div class="flex justify-between items-center mb-1">
+                    <p class="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold">Producto con Mayor Incidencia</p>
+                    <span class="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">RMS: ${topProduct.rms}</span>
+                </div>
+                <p class="text-slate-900 dark:text-white font-bold text-sm mb-1 truncate" title="${topProduct.descripcion}">${topProduct.descripcion}</p>
+                <div class="mt-2 flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <span class="text-[10px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900/40 px-2 py-0.5 rounded-md font-bold">Alerta Crítica</span>
+                    <span class="text-xs font-black text-slate-900 dark:text-white">${topProduct.sum} Fallos</span>
                 </div>
             </div>
+            ` : ''}
         </div>
     `;
 }
@@ -644,17 +672,30 @@ function renderTable() {
     let html = '';
     for(let i=0; i < displayCount; i++) {
         const item = filtered[i];
-        const otDetailsDisplay = item.otDetails.map(d => `<span class="whitespace-nowrap px-1 bg-slate-800 text-slate-300 rounded mr-1">${d.fecha.split(' ')[0]}: ${d.ot}</span>`).join(' ');
+        
+        // Formatear las OTs de manera profesional, minimalista y compacta
+        const MAX_VISIBLE_OTS = 2;
+        const visibleOts = item.otDetails.slice(0, MAX_VISIBLE_OTS);
+        const remainingCount = item.otDetails.length - MAX_VISIBLE_OTS;
+        
+        let otDetailsDisplay = visibleOts.map(d => 
+            `<span class="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[11px] font-mono mr-1 mb-1 whitespace-nowrap">${d.fecha.split(' ')[0]}: <strong class="ml-1 text-slate-900 dark:text-white font-bold">${d.ot}</strong></span>`
+        ).join('');
+
+        if (remainingCount > 0) {
+            const fullListTooltip = item.otDetails.map(d => `${d.fecha.split(' ')[0]}: OT ${d.ot}`).join('&#10;');
+            otDetailsDisplay += `<span class="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-[10px] font-bold cursor-help mb-1 whitespace-nowrap shadow-sm" title="${fullListTooltip}">+${remainingCount} más</span>`;
+        }
 
         html += `
-            <tr class="hover:bg-slate-800/50 transition-colors">
-                <td class="font-medium text-white">${item.marca}</td>
-                <td>${item.rms}</td>
-                <td class="text-sm text-slate-400 max-w-xs truncate" title="${item.descripcion}">${item.descripcion}</td>
-                <td class="text-center"><span class="badge badge-parcial">${item.parcial}</span></td>
-                <td class="text-center"><span class="badge badge-total">${item.total}</span></td>
-                <td class="text-center"><span class="font-bold text-white">${item.sum}</span></td>
-                <td class="text-xs max-w-md break-words">${otDetailsDisplay}</td>
+            <tr class="hover:bg-blue-50/70 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-100 dark:border-slate-800/70 group">
+                <td class="font-bold text-slate-900 dark:text-white text-xs whitespace-nowrap">${item.marca}</td>
+                <td class="font-mono text-xs text-slate-600 dark:text-slate-400 font-semibold whitespace-nowrap">${item.rms}</td>
+                <td class="text-xs text-slate-700 dark:text-slate-300 max-w-xs truncate font-medium" title="${item.descripcion}">${item.descripcion}</td>
+                <td class="text-center"><span class="badge badge-parcial font-bold">${item.parcial}</span></td>
+                <td class="text-center"><span class="badge badge-total font-bold">${item.total}</span></td>
+                <td class="text-center font-black text-slate-900 dark:text-white text-sm">${item.sum}</td>
+                <td class="text-xs max-w-md">${otDetailsDisplay}</td>
             </tr>
         `;
     }
@@ -663,7 +704,7 @@ function renderTable() {
         const msg = currentBrandTableFilter !== 'ALL'
             ? `No hay productos registrados para la marca "${currentBrandTableFilter}"`
             : `No se encontraron resultados para "${query}"`;
-        html = `<tr><td colspan="6" class="text-center py-8 text-slate-500">${msg}</td></tr>`;
+        html = `<tr><td colspan="7" class="text-center py-8 text-slate-400">${msg}</td></tr>`;
     }
 
     tbody.innerHTML = html;

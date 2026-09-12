@@ -418,6 +418,7 @@
                 localStorage.setItem('theme_garantias', 'light');
             }
             updateThemeUI();
+            if (window.refreshBrandChart) window.refreshBrandChart();
         }
 
         document.addEventListener('DOMContentLoaded', updateThemeUI);
