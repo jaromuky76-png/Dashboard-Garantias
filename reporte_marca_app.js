@@ -298,12 +298,12 @@
         if (pageItems.length === 0) {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td colspan="9" class="text-center py-12 text-slate-400">
-                    <svg class="w-12 h-12 mx-auto text-slate-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <td colspan="9" class="text-center py-12 text-slate-400 dark:text-slate-500">
+                    <svg class="w-12 h-12 mx-auto text-slate-400 dark:text-slate-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
-                    <p class="text-base font-semibold text-slate-300">No se encontraron casos de garantía</p>
-                    <p class="text-xs text-slate-500 mt-1">Pruebe ajustando el rango de fechas, seleccionando otra marca o limpiando el buscador.</p>
+                    <p class="text-base font-bold text-slate-700 dark:text-slate-200">No se encontraron casos de garantía</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Pruebe ajustando el rango de fechas, seleccionando otra marca o limpiando el buscador.</p>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -312,18 +312,18 @@
 
         pageItems.forEach(r => {
             const tr = document.createElement('tr');
-            tr.className = 'hover:bg-slate-800/50 transition-colors border-b border-slate-800/80 group';
+            tr.className = 'table-row-item group';
 
             // Badge Unidad
             const unidadBadge = r.unidad === 'CS' 
-                ? '<span class="badge badge-cs font-bold">CS</span>' 
-                : '<span class="badge badge-maestros font-bold">MAESTROS</span>';
+                ? '<span class="badge badge-cs">CS</span>' 
+                : '<span class="badge badge-maestros">MAESTROS</span>';
 
             // Celda OT con botón de copia rápida y enlace digital
             let otCellContent = '';
             if (r.link) {
                 otCellContent = `
-                    <a href="${r.link}" target="_blank" rel="noopener noreferrer" class="font-bold text-blue-400 hover:text-blue-300 hover:underline inline-flex items-center gap-1">
+                    <a href="${r.link}" target="_blank" rel="noopener noreferrer" class="font-black text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1">
                         ${r.ot}
                         <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
@@ -331,13 +331,13 @@
                     </a>
                 `;
             } else {
-                otCellContent = `<span class="font-bold text-white">${r.ot}</span>`;
+                otCellContent = `<span class="font-black text-slate-900 dark:text-white">${r.ot}</span>`;
             }
 
             const otCell = `
                 <div class="inline-flex items-center gap-1.5">
                     ${otCellContent}
-                    <button type="button" onclick="copiarAlPortapapeles('${r.ot}', 'No. OT')" class="copy-btn text-slate-400 hover:text-white p-1 rounded hover:bg-slate-700/50" title="Copiar No. de OT">
+                    <button type="button" onclick="copiarAlPortapapeles('${r.ot}', 'No. OT')" class="copy-btn text-slate-400 hover:text-blue-600 dark:hover:text-white p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800" title="Copiar No. de OT">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                     </button>
                 </div>
@@ -350,8 +350,8 @@
             if (r.no_caso_marca && r.no_caso_marca.trim().length > 0) {
                 marcaCasoCell = `
                     <div class="inline-flex items-center gap-1.5">
-                        <span class="badge badge-has-case font-mono font-bold">${r.no_caso_marca}</span>
-                        <button type="button" onclick="copiarAlPortapapeles('${r.no_caso_marca}', 'No. de Caso')" class="copy-btn text-slate-400 hover:text-white p-1 rounded hover:bg-slate-700/50" title="Copiar No. Caso Marca">
+                        <span class="badge badge-has-case font-mono">${r.no_caso_marca}</span>
+                        <button type="button" onclick="copiarAlPortapapeles('${r.no_caso_marca}', 'No. de Caso')" class="copy-btn text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800" title="Copiar No. Caso Marca">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                         </button>
                     </div>
@@ -368,27 +368,27 @@
             // Modelo / RMS
             let modeloStr = r.modelo || r.rms || '--';
             if (r.modelo && r.rms && r.modelo !== r.rms) {
-                modeloStr = `${r.modelo} <span class="text-[10px] text-slate-400 block font-mono">RMS: ${r.rms}</span>`;
+                modeloStr = `<span class="font-semibold text-slate-800 dark:text-slate-200">${r.modelo}</span><span class="text-[10px] text-slate-500 dark:text-slate-400 block font-mono">RMS: ${r.rms}</span>`;
             }
 
             // Serie
-            const serieStr = r.serie ? `<span class="font-mono text-xs text-slate-200 bg-slate-900/60 px-1.5 py-0.5 rounded border border-slate-800">${r.serie}</span>` : '<span class="text-slate-600 italic text-xs">No registrada</span>';
+            const serieStr = r.serie ? `<span class="serie-chip">${r.serie}</span>` : '<span class="text-slate-400 dark:text-slate-500 italic text-xs">No registrada</span>';
 
             tr.innerHTML = `
                 <td>${unidadBadge}</td>
                 <td>${otCell}</td>
                 <td>${marcaCasoCell}</td>
-                <td class="text-xs text-slate-300 whitespace-nowrap">${fechaStr}</td>
+                <td class="text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap font-medium">${fechaStr}</td>
                 <td>
-                    <div class="font-semibold text-slate-100 text-sm">${r.cliente || 'CLIENTE NO ESPECIFICADO'}</div>
+                    <div class="font-bold text-slate-900 dark:text-white text-sm leading-snug">${r.cliente || 'CLIENTE NO ESPECIFICADO'}</div>
                 </td>
-                <td class="text-xs text-slate-300 max-w-xs">
+                <td class="text-xs text-slate-600 dark:text-slate-300 max-w-xs leading-relaxed">
                     <div class="line-clamp-2" title="${r.descripcion || ''}">${r.descripcion || '--'}</div>
                 </td>
-                <td class="text-xs text-slate-300 font-medium">${modeloStr}</td>
+                <td class="text-xs text-slate-700 dark:text-slate-300">${modeloStr}</td>
                 <td>${serieStr}</td>
                 <td class="text-xs">
-                    <span class="text-slate-300 font-medium">${r.tipo_garantia || 'GARANTIA'}</span>
+                    <span class="text-slate-700 dark:text-slate-300 font-semibold">${r.tipo_garantia || 'GARANTIA'}</span>
                 </td>
             `;
             tbody.appendChild(tr);

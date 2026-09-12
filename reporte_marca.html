@@ -1,9 +1,24 @@
 <!DOCTYPE html>
-<html lang="es" class="dark">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reporte de Garantías por Marca - OT</title>
+    <title>Reporte de Garantías por Marca - SILVA INTERNACIONAL</title>
+    <!-- Script de inicialización de tema anti-parpadeo -->
+    <script>
+        (function() {
+            var saved = localStorage.getItem('theme_garantias');
+            if (saved === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        })();
+    </script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -12,13 +27,11 @@
             theme: {
                 extend: {
                     colors: {
-                        dark: '#0f172a',
-                        card: '#1e293b',
-                        primary: '#3b82f6',
-                        secondary: '#8b5cf6',
-                        success: '#10b981',
-                        danger: '#ef4444',
-                        warning: '#f59e0b'
+                        primary: '#2563eb',
+                        secondary: '#7c3aed',
+                        success: '#059669',
+                        warning: '#d97706',
+                        danger: '#dc2626'
                     }
                 }
             }
@@ -27,25 +40,137 @@
     <!-- SheetJS con soporte de formato ejecutivo (xlsx-js-style) -->
     <script src="xlsx.bundle.js"></script>
     <script>
-        // Fallback a CDN en caso de ser necesario
         if (typeof XLSX === 'undefined' || !XLSX.utils) {
             document.write('<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"><\/script>');
         }
     </script>
-    <!-- Custom CSS -->
+    <!-- Custom Theme CSS -->
     <style>
+        :root {
+            --bg-page: #f8fafc;
+            --bg-card: #ffffff;
+            --bg-card-subtle: #f1f5f9;
+            --bg-input: #ffffff;
+            --border-card: #e2e8f0;
+            --border-input: #cbd5e1;
+            --border-table: #f1f5f9;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --th-bg: #f1f5f9;
+            --th-text: #475569;
+            --th-border: #e2e8f0;
+            --row-bg-even: #ffffff;
+            --row-bg-odd: #f8fafc;
+            --tr-hover: #e2e8f0;
+            --badge-cs-bg: #eff6ff;
+            --badge-cs-text: #1d4ed8;
+            --badge-cs-border: #bfdbfe;
+            --badge-mae-bg: #faf5ff;
+            --badge-mae-text: #7e22ce;
+            --badge-mae-border: #e9d5ff;
+            --badge-case-bg: #ecfdf5;
+            --badge-case-text: #047857;
+            --badge-case-border: #a7f3d0;
+            --badge-pend-bg: #fffbeb;
+            --badge-pend-text: #b45309;
+            --badge-pend-border: #fde68a;
+            --badge-na-bg: #f1f5f9;
+            --badge-na-text: #64748b;
+            --badge-na-border: #e2e8f0;
+            --code-bg: #f1f5f9;
+            --code-text: #334155;
+            --code-border: #e2e8f0;
+            --card-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
+            --btn-period-bg: #ffffff;
+            --btn-period-text: #475569;
+            --btn-period-border: #cbd5e1;
+        }
+
+        html.dark {
+            --bg-page: #0b0f19;
+            --bg-card: #131b2e;
+            --bg-card-subtle: #1a243b;
+            --bg-input: #1a243b;
+            --border-card: #232f48;
+            --border-input: #2d3b59;
+            --border-table: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --th-bg: #0d1527;
+            --th-text: #94a3b8;
+            --th-border: #1e293b;
+            --row-bg-even: #131b2e;
+            --row-bg-odd: #0f172a;
+            --tr-hover: rgba(30, 41, 59, 0.65);
+            --badge-cs-bg: rgba(59, 130, 246, 0.15);
+            --badge-cs-text: #60a5fa;
+            --badge-cs-border: rgba(59, 130, 246, 0.3);
+            --badge-mae-bg: rgba(168, 85, 247, 0.15);
+            --badge-mae-text: #c084fc;
+            --badge-mae-border: rgba(168, 85, 247, 0.3);
+            --badge-case-bg: rgba(16, 185, 129, 0.15);
+            --badge-case-text: #34d399;
+            --badge-case-border: rgba(16, 185, 129, 0.3);
+            --badge-pend-bg: rgba(245, 158, 11, 0.15);
+            --badge-pend-text: #fbbf24;
+            --badge-pend-border: rgba(245, 158, 11, 0.3);
+            --badge-na-bg: rgba(100, 116, 139, 0.15);
+            --badge-na-text: #94a3b8;
+            --badge-na-border: rgba(100, 116, 139, 0.25);
+            --code-bg: rgba(15, 23, 42, 0.7);
+            --code-text: #e2e8f0;
+            --code-border: #1e293b;
+            --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.35), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+            --btn-period-bg: #1a243b;
+            --btn-period-text: #94a3b8;
+            --btn-period-border: #232f48;
+        }
+
         body {
-            background-color: #0f172a;
-            color: #f8fafc;
+            background-color: var(--bg-page);
+            color: var(--text-main);
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            transition: background-color 0.2s ease, color 0.2s ease;
         }
-        .glass-card {
-            background: rgba(30, 41, 59, 0.72);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 1rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+
+        .executive-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-card);
+            border-radius: 1.25rem;
+            box-shadow: var(--card-shadow);
+            transition: all 0.2s ease;
         }
+
+        .custom-input {
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-input);
+            color: var(--text-main);
+            transition: all 0.15s ease;
+        }
+        .custom-input:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        }
+
+        .btn-periodo {
+            background-color: var(--btn-period-bg);
+            color: var(--btn-period-text);
+            border: 1px solid var(--btn-period-border);
+            transition: all 0.18s ease;
+        }
+        .btn-periodo:hover {
+            border-color: #2563eb;
+            color: #2563eb;
+        }
+        .btn-periodo.active {
+            background-color: #2563eb !important;
+            color: #ffffff !important;
+            border-color: #2563eb !important;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+        }
+
+        /* Tabla Ejecutiva */
         table {
             border-collapse: separate;
             border-spacing: 0;
@@ -54,181 +179,231 @@
         th, td {
             padding: 0.85rem 1rem;
             text-align: left;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         }
         th {
-            background-color: rgba(15, 23, 42, 0.88);
-            font-weight: 600;
-            color: #94a3b8;
+            background-color: var(--th-bg);
+            color: var(--th-text);
+            font-weight: 700;
             text-transform: uppercase;
-            font-size: 0.72rem;
-            letter-spacing: 0.05em;
+            font-size: 0.7rem;
+            letter-spacing: 0.06em;
+            border-bottom: 1px solid var(--th-border);
             position: sticky;
             top: 0;
             z-index: 10;
         }
-        tr:last-child td { border-bottom: none; }
+        .table-row-item {
+            background-color: var(--row-bg-even);
+            border-bottom: 1px solid var(--border-table);
+            transition: background-color 0.15s ease;
+        }
+        .table-row-item:nth-child(even) {
+            background-color: var(--row-bg-odd);
+        }
+        .table-row-item:hover {
+            background-color: var(--tr-hover) !important;
+        }
+
+        /* Badges */
         .badge {
             padding: 0.25rem 0.65rem;
             border-radius: 9999px;
             font-size: 0.72rem;
-            font-weight: 600;
+            font-weight: 700;
             display: inline-flex;
             align-items: center;
             gap: 0.35rem;
         }
-        .badge-cs { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
-        .badge-maestros { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
-        .badge-has-case { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
-        .badge-no-case { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
-        .badge-na-case { background: rgba(100, 116, 139, 0.15); color: #94a3b8; border: 1px solid rgba(100, 116, 139, 0.25); }
+        .badge-cs { background: var(--badge-cs-bg); color: var(--badge-cs-text); border: 1px solid var(--badge-cs-border); }
+        .badge-maestros { background: var(--badge-mae-bg); color: var(--badge-mae-text); border: 1px solid var(--badge-mae-border); }
+        .badge-has-case { background: var(--badge-case-bg); color: var(--badge-case-text); border: 1px solid var(--badge-case-border); }
+        .badge-no-case { background: var(--badge-pend-bg); color: var(--badge-pend-text); border: 1px solid var(--badge-pend-border); }
+        .badge-na-case { background: var(--badge-na-bg); color: var(--badge-na-text); border: 1px solid var(--badge-na-border); }
 
-        .btn-periodo {
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        .serie-chip {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.75rem;
+            background: var(--code-bg);
+            color: var(--code-text);
+            border: 1px solid var(--code-border);
+            padding: 0.15rem 0.5rem;
+            border-radius: 0.375rem;
         }
-        .btn-periodo.active {
-            background-color: #2563eb !important;
-            color: #ffffff !important;
-            border-color: #3b82f6 !important;
-            box-shadow: 0 0 12px rgba(37, 99, 235, 0.4);
-        }
+
         .copy-btn {
-            opacity: 0.4;
-            transition: opacity 0.15s, color 0.15s;
+            opacity: 0.45;
+            transition: opacity 0.15s, color 0.15s, transform 0.15s;
         }
         tr:hover .copy-btn {
-            opacity: 0.9;
+            opacity: 0.85;
         }
         .copy-btn:hover {
             opacity: 1;
-            color: #38bdf8;
+            color: #2563eb;
+            transform: scale(1.15);
         }
+
         /* Toast flotante */
         #toast-copy {
             position: fixed;
             bottom: 24px;
             right: 24px;
-            background: #10b981;
+            background: #047857;
             color: #ffffff;
-            padding: 10px 18px;
-            border-radius: 8px;
+            padding: 11px 20px;
+            border-radius: 12px;
             font-size: 0.85rem;
             font-weight: 600;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
             display: none;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
             z-index: 9999;
             animation: fadeInOut 2s forwards;
         }
         @keyframes fadeInOut {
-            0% { opacity: 0; transform: translateY(10px); }
-            15% { opacity: 1; transform: translateY(0); }
-            85% { opacity: 1; transform: translateY(0); }
-            100% { opacity: 0; transform: translateY(-10px); }
+            0% { opacity: 0; transform: translateY(12px) scale(0.96); }
+            15% { opacity: 1; transform: translateY(0) scale(1); }
+            85% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-12px) scale(0.96); }
         }
     </style>
 </head>
-<body class="min-h-screen p-6">
+<body class="min-h-screen p-4 md:p-8">
     <div id="toast-copy">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+        <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
         <span id="toast-msg">Copiado al portapapeles</span>
     </div>
 
     <div class="max-w-7xl mx-auto space-y-6">
         
-        <!-- Header -->
-        <header class="flex flex-wrap justify-between items-center gap-4 glass-card p-6 border-b border-slate-800">
-            <div>
-                <div class="flex items-center gap-3">
-                    <div class="p-2.5 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl shadow-lg shadow-blue-900/30">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <!-- Header Principal Ejecutivo -->
+        <header class="executive-card p-6">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <!-- Marca corporativa y título -->
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-800 flex items-center justify-center text-white shadow-lg shadow-blue-500/25 shrink-0">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
                     </div>
                     <div>
-                        <h1 class="text-3xl font-extrabold bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent tracking-tight">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">
+                                SILVA INTERNACIONAL S.A.
+                            </span>
+                            <span class="text-xs text-slate-400 font-medium">• Centro de Garantías</span>
+                        </div>
+                        <h1 class="text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-white mt-1">
                             Reporte de Garantías por Marca
                         </h1>
-                        <p class="text-xs text-slate-400 mt-0.5">Módulo de auditoría, trazabilidad de órdenes y exportación ejecutiva para reclamos</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">
+                            Auditoría de Casos, Trazabilidad de Reclamos y Exportación Ejecutiva
+                        </p>
                     </div>
                 </div>
-                <nav class="mt-4 flex flex-wrap gap-4 text-sm font-medium">
-                    <a href="index.html" class="text-slate-400 hover:text-white transition-colors pb-2">Garantías</a>
-                    <a href="servicio.html" class="text-slate-400 hover:text-white transition-colors pb-2">Servicios</a>
-                    <a href="repuestos.html" class="text-slate-400 hover:text-white transition-colors pb-2">Sugerido de Compras</a>
-                    <a href="seguimiento.html" class="text-slate-400 hover:text-white transition-colors pb-2">Seguimiento Trámites</a>
-                    <a href="reporte_marca.html" class="text-blue-400 font-semibold border-b-2 border-blue-500 pb-2 flex items-center gap-1.5">
-                        <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                        Reporte Marcas
-                    </a>
-                    <a href="archivos.html" class="text-slate-400 hover:text-white transition-colors pb-2">Archivos Resguardados</a>
-                </nav>
+
+                <!-- Segmented Control Modo Claro / Oscuro + Contador DB -->
+                <div class="flex items-center gap-3">
+                    <!-- Segmented Selector de Tema -->
+                    <div class="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 shadow-sm" role="group" aria-label="Selector de Tema">
+                        <button type="button" onclick="setTheme('light')" id="btn-theme-light" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer" title="Activar Modo Claro">
+                            <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                            </svg>
+                            <span>Claro</span>
+                        </button>
+                        <button type="button" onclick="setTheme('dark')" id="btn-theme-dark" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer" title="Activar Modo Oscuro">
+                            <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                            </svg>
+                            <span>Oscuro</span>
+                        </button>
+                    </div>
+
+                    <!-- Widget Estadísticas Base de Datos -->
+                    <div class="text-right px-4 py-2 rounded-xl border bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700">
+                        <div class="flex items-center gap-1.5 justify-end">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span class="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Base Consolidada</span>
+                        </div>
+                        <div id="header-total-registros" class="text-xl font-black text-slate-900 dark:text-white leading-tight">--</div>
+                        <span class="text-[10px] text-slate-500 dark:text-slate-400 block">CS + Maestros</span>
+                    </div>
+                </div>
             </div>
-            <div class="text-right bg-slate-900/60 px-5 py-3 rounded-xl border border-slate-800">
-                <span class="text-[11px] text-slate-400 block uppercase tracking-wider font-semibold">Total Base de Datos</span>
-                <span id="header-total-registros" class="text-2xl font-black text-white tracking-tight">--</span>
-                <span class="text-[11px] text-slate-500 block">Casos Consolidados (CS + Maestros)</span>
-            </div>
+
+            <!-- Navegación de pestañas estilo SaaS -->
+            <nav class="mt-5 pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-wrap gap-2 text-xs font-semibold">
+                <a href="index.html" class="px-3.5 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors">Garantías</a>
+                <a href="servicio.html" class="px-3.5 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors">Servicios</a>
+                <a href="repuestos.html" class="px-3.5 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors">Sugerido de Compras</a>
+                <a href="seguimiento.html" class="px-3.5 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors">Seguimiento Trámites</a>
+                <a href="reporte_marca.html" class="px-3.5 py-2 rounded-lg bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/25 flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
+                    Reporte Marcas
+                </a>
+                <a href="archivos.html" class="px-3.5 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors">Archivos Resguardados</a>
+            </nav>
         </header>
 
-        <!-- Filtros -->
-        <div class="glass-card p-6 space-y-4">
+        <!-- Filtros y Controles -->
+        <div class="executive-card p-6 space-y-5">
             <!-- Fila 1: Marca, Unidad, Buscador -->
             <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
                 <div class="md:col-span-4">
-                    <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider flex items-center justify-between">
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider flex items-center justify-between">
                         <span class="flex items-center gap-1.5">
-                            <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>
+                            <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>
                             Marca a Consultar
                         </span>
-                        <span id="marca-count-label" class="text-[10px] text-blue-400 font-normal">--</span>
+                        <span id="marca-count-label" class="text-[11px] text-blue-600 dark:text-blue-400 font-semibold">--</span>
                     </label>
-                    <select id="filtro-marca" class="w-full bg-slate-800/90 border border-slate-700 hover:border-slate-600 rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500 transition-colors text-white font-semibold shadow-inner">
+                    <select id="filtro-marca" class="custom-input w-full rounded-xl px-4 py-2.5 font-bold text-sm shadow-sm cursor-pointer">
                         <option value="ALL">Todas las Marcas</option>
-                        <!-- Opciones generadas por JS -->
+                        <!-- Opciones dinámicas -->
                     </select>
                 </div>
                 <div class="md:col-span-3">
-                    <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider flex items-center gap-1.5">
-                        <svg class="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
                         Unidad de Negocio
                     </label>
-                    <select id="filtro-unidad" class="w-full bg-slate-800/90 border border-slate-700 hover:border-slate-600 rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500 transition-colors text-white font-medium shadow-inner">
+                    <select id="filtro-unidad" class="custom-input w-full rounded-xl px-4 py-2.5 font-medium text-sm shadow-sm cursor-pointer">
                         <option value="ALL">Todas las Unidades (CS + Maestros)</option>
                         <option value="CS">Centro de Servicios (CS)</option>
                         <option value="MAESTROS">Maestros</option>
                     </select>
                 </div>
                 <div class="md:col-span-5">
-                    <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider flex items-center gap-1.5">
-                        <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                         Búsqueda Instantánea
                     </label>
                     <div class="relative">
-                        <input type="text" id="buscador-general" placeholder="Buscar por No. OT, Cliente, Caso Marca, RMS, Serie..." class="w-full bg-slate-800/90 border border-slate-700 hover:border-slate-600 rounded-lg pl-10 pr-10 py-2.5 focus:outline-none focus:border-blue-500 transition-colors text-white shadow-inner text-sm">
-                        <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <input type="text" id="buscador-general" placeholder="Buscar por No. OT, Cliente, Caso Marca, RMS, Serie..." class="custom-input w-full rounded-xl pl-10 pr-10 py-2.5 text-sm shadow-sm">
+                        <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                         </svg>
-                        <button type="button" id="btn-clear-search" onclick="limpiarBuscador()" class="absolute right-3 top-2.5 text-slate-400 hover:text-white hidden" title="Limpiar búsqueda">
+                        <button type="button" id="btn-clear-search" onclick="limpiarBuscador()" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-white hidden cursor-pointer" title="Limpiar búsqueda">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Fila 2: Rango de Período y Botón Exportar -->
-            <div class="pt-3 border-t border-slate-700/50 flex flex-wrap items-center justify-between gap-4">
+            <!-- Fila 2: Período y Botón Exportar -->
+            <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
                 <div class="flex flex-wrap items-center gap-3">
-                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                        <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                         Período:
                     </span>
                     
-                    <!-- Desde -->
-                    <div class="flex items-center gap-1.5 bg-slate-800/90 px-3 py-1.5 rounded-lg border border-slate-700">
-                        <span class="text-xs text-slate-400 font-medium">Desde:</span>
-                        <select id="filtro-desde-mes" class="bg-transparent text-xs text-white focus:outline-none font-semibold cursor-pointer">
+                    <!-- Selector Desde -->
+                    <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border custom-input text-xs">
+                        <span class="text-slate-400 font-semibold">Desde:</span>
+                        <select id="filtro-desde-mes" class="bg-transparent font-bold cursor-pointer focus:outline-none">
                             <option value="1">ENERO</option>
                             <option value="2">FEBRERO</option>
                             <option value="3">MARZO</option>
@@ -242,16 +417,16 @@
                             <option value="11">NOVIEMBRE</option>
                             <option value="12">DICIEMBRE</option>
                         </select>
-                        <select id="filtro-desde-anio" class="bg-transparent text-xs text-white focus:outline-none font-semibold cursor-pointer">
+                        <select id="filtro-desde-anio" class="bg-transparent font-bold cursor-pointer focus:outline-none ml-1">
                             <option value="2026">2026</option>
                             <option value="2025">2025</option>
                         </select>
                     </div>
 
-                    <!-- Hasta -->
-                    <div class="flex items-center gap-1.5 bg-slate-800/90 px-3 py-1.5 rounded-lg border border-slate-700">
-                        <span class="text-xs text-slate-400 font-medium">Hasta:</span>
-                        <select id="filtro-hasta-mes" class="bg-transparent text-xs text-white focus:outline-none font-semibold cursor-pointer">
+                    <!-- Selector Hasta -->
+                    <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border custom-input text-xs">
+                        <span class="text-slate-400 font-semibold">Hasta:</span>
+                        <select id="filtro-hasta-mes" class="bg-transparent font-bold cursor-pointer focus:outline-none">
                             <option value="1">ENERO</option>
                             <option value="2">FEBRERO</option>
                             <option value="3">MARZO</option>
@@ -265,117 +440,113 @@
                             <option value="11">NOVIEMBRE</option>
                             <option value="12">DICIEMBRE</option>
                         </select>
-                        <select id="filtro-hasta-anio" class="bg-transparent text-xs text-white focus:outline-none font-semibold cursor-pointer">
+                        <select id="filtro-hasta-anio" class="bg-transparent font-bold cursor-pointer focus:outline-none ml-1">
                             <option value="2026" selected>2026</option>
                             <option value="2025">2025</option>
                         </select>
                     </div>
 
-                    <!-- Accesos Rápidos Segmentados -->
-                    <div class="flex flex-wrap items-center gap-1.5 text-xs">
-                        <button type="button" id="btn-quick-ene-ago-2026" onclick="setRangoRapido(2026, 1, 2026, 8, this)" class="btn-periodo px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-blue-400 hover:text-white border border-slate-700 font-medium flex items-center gap-1 active">
+                    <!-- Botones Rápidos Segmentados -->
+                    <div class="flex flex-wrap items-center gap-1.5 text-xs font-semibold">
+                        <button type="button" id="btn-quick-ene-ago-2026" onclick="setRangoRapido(2026, 1, 2026, 8, this)" class="btn-periodo px-3 py-1.5 rounded-xl cursor-pointer active">
                             <span>Ene - Ago 2026</span>
                         </button>
-                        <button type="button" id="btn-quick-2026" onclick="setRangoRapido(2026, 1, 2026, 12, this)" class="btn-periodo px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 font-medium flex items-center gap-1">
+                        <button type="button" id="btn-quick-2026" onclick="setRangoRapido(2026, 1, 2026, 12, this)" class="btn-periodo px-3 py-1.5 rounded-xl cursor-pointer">
                             <span>Todo 2026</span>
                         </button>
-                        <button type="button" id="btn-quick-2025" onclick="setRangoRapido(2025, 1, 2025, 12, this)" class="btn-periodo px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 font-medium flex items-center gap-1">
+                        <button type="button" id="btn-quick-2025" onclick="setRangoRapido(2025, 1, 2025, 12, this)" class="btn-periodo px-3 py-1.5 rounded-xl cursor-pointer">
                             <span>Todo 2025</span>
                         </button>
-                        <button type="button" id="btn-quick-todo" onclick="setRangoRapido(2025, 1, 2026, 12, this)" class="btn-periodo px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-purple-400 hover:text-white border border-slate-700 font-medium flex items-center gap-1">
+                        <button type="button" id="btn-quick-todo" onclick="setRangoRapido(2025, 1, 2026, 12, this)" class="btn-periodo px-3 py-1.5 rounded-xl cursor-pointer">
                             <span>Historial Completo (2025-2026)</span>
                         </button>
                     </div>
                 </div>
 
-                <!-- Botón Exportar Excel Profesional -->
+                <!-- Botón de Descarga Excel -->
                 <div>
-                    <button id="btn-exportar-excel" onclick="exportarExcel()" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 text-white px-5 py-2.5 rounded-xl transition-all duration-200 font-semibold flex items-center gap-2.5 shadow-lg shadow-emerald-900/40 border border-emerald-500/30 group">
-                        <svg class="w-5 h-5 text-emerald-200 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    <button id="btn-exportar-excel" onclick="exportarExcel()" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 text-white px-5 py-2.5 rounded-xl transition-all duration-200 font-bold text-xs flex items-center gap-2.5 shadow-md shadow-emerald-700/25 cursor-pointer border border-emerald-500/20 group">
+                        <svg class="w-4 h-4 text-emerald-100 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
                         <span id="btn-exportar-texto">Exportar Reporte a Excel</span>
                     </button>
                 </div>
             </div>
 
-            <!-- Nota de Acreditación de Casos de Fábrica -->
-            <div class="flex items-start gap-2.5 text-xs text-slate-300 bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
-                <div class="p-1 bg-blue-500/20 text-blue-400 rounded-md mt-0.5">
+            <!-- Nota Informativa Corporativa -->
+            <div class="flex items-start gap-3 text-xs rounded-xl p-3.5 border bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
+                <div class="p-1 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 </div>
                 <div class="leading-relaxed">
-                    <span class="font-bold text-slate-100">Control Oficial de Órdenes:</span>
-                    Las marcas <strong class="text-blue-300">HISENSE</strong> (orden numérica de 9 dígitos) y <strong class="text-indigo-300">LG</strong> (código RNN) gestionan casos ante portales de fábrica. Para todas las demás marcas autorizadas (Truper, Forza, Yale, Westinghouse, etc.), el reclamo de garantía se identifica, audita y liquida oficialmente mediante el <strong class="text-emerald-300">No. de OT interna</strong> de nuestra empresa.
+                    <strong class="text-slate-900 dark:text-white">Control de Reclamos por Fabricante:</strong>
+                    Las marcas <strong class="text-blue-600 dark:text-blue-400">HISENSE</strong> (orden numérica de 9 dígitos) y <strong class="text-purple-600 dark:text-purple-400">LG</strong> (código RNN) gestionan trámites ante portales oficiales de fábrica. En todas las demás marcas autorizadas (Truper, Forza, Yale, Westinghouse, etc.), el caso se acredita y liquida formalmente mediante nuestro <strong class="text-emerald-600 dark:text-emerald-400">No. de OT interna</strong>.
                 </div>
             </div>
         </div>
 
-        <!-- Tarjetas KPI -->
+        <!-- Tarjetas Métricas KPI Ejecutivas -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <!-- KPI 1: Total Casos -->
-            <div class="glass-card p-5 relative overflow-hidden group hover:border-slate-600 transition-colors">
+            <div class="executive-card p-5 relative overflow-hidden group hover:translate-y-[-2px] transition-transform border-t-4 border-t-blue-600">
                 <div class="flex items-center justify-between">
-                    <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Casos Marca</div>
-                    <div class="p-2 rounded-lg bg-blue-500/10 text-blue-400">
+                    <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Casos Marca</div>
+                    <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400 flex items-center justify-center font-bold">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                     </div>
                 </div>
-                <div id="kpi-total" class="text-3xl font-black text-white mt-2 tracking-tight">0</div>
-                <div id="kpi-periodo-desc" class="text-[11px] text-slate-400 mt-1 flex items-center gap-1">En período seleccionado</div>
-                <div class="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
+                <div id="kpi-total" class="text-3xl font-black text-slate-900 dark:text-white mt-2 tracking-tight">0</div>
+                <div id="kpi-periodo-desc" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">En período seleccionado</div>
             </div>
 
             <!-- KPI 2: CS -->
-            <div class="glass-card p-5 relative overflow-hidden group hover:border-slate-600 transition-colors">
+            <div class="executive-card p-5 relative overflow-hidden group hover:translate-y-[-2px] transition-transform border-t-4 border-t-sky-500">
                 <div class="flex items-center justify-between">
-                    <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Centro de Servicios (CS)</div>
-                    <div class="p-2 rounded-lg bg-sky-500/10 text-sky-400">
+                    <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Centro de Servicios (CS)</div>
+                    <div class="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-950 dark:text-sky-400 flex items-center justify-center font-bold">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
                     </div>
                 </div>
-                <div id="kpi-cs" class="text-3xl font-black text-sky-400 mt-2 tracking-tight">0</div>
-                <div id="kpi-cs-pct" class="text-[11px] text-slate-400 mt-1">0% del total</div>
-                <div class="absolute bottom-0 left-0 right-0 h-1 bg-sky-500"></div>
+                <div id="kpi-cs" class="text-3xl font-black text-sky-600 dark:text-sky-400 mt-2 tracking-tight">0</div>
+                <div id="kpi-cs-pct" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">0% del total</div>
             </div>
 
             <!-- KPI 3: Maestros -->
-            <div class="glass-card p-5 relative overflow-hidden group hover:border-slate-600 transition-colors">
+            <div class="executive-card p-5 relative overflow-hidden group hover:translate-y-[-2px] transition-transform border-t-4 border-t-purple-600">
                 <div class="flex items-center justify-between">
-                    <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Maestros</div>
-                    <div class="p-2 rounded-lg bg-purple-500/10 text-purple-400">
+                    <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Maestros</div>
+                    <div class="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400 flex items-center justify-center font-bold">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"></path></svg>
                     </div>
                 </div>
-                <div id="kpi-maestros" class="text-3xl font-black text-purple-400 mt-2 tracking-tight">0</div>
-                <div id="kpi-maestros-pct" class="text-[11px] text-slate-400 mt-1">0% del total</div>
-                <div class="absolute bottom-0 left-0 right-0 h-1 bg-purple-500"></div>
+                <div id="kpi-maestros" class="text-3xl font-black text-purple-600 dark:text-purple-400 mt-2 tracking-tight">0</div>
+                <div id="kpi-maestros-pct" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">0% del total</div>
             </div>
 
             <!-- KPI 4: Con Caso / Control Oficial -->
-            <div class="glass-card p-5 relative overflow-hidden group hover:border-slate-600 transition-colors">
+            <div class="executive-card p-5 relative overflow-hidden group hover:translate-y-[-2px] transition-transform border-t-4 border-t-emerald-500">
                 <div class="flex items-center justify-between">
-                    <div id="kpi-con-caso-title" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Con No. Orden Marca</div>
-                    <div class="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+                    <div id="kpi-con-caso-title" class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Con No. Orden Marca</div>
+                    <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 flex items-center justify-center font-bold">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
                     </div>
                 </div>
-                <div id="kpi-con-caso" class="text-3xl font-black text-emerald-400 mt-2 tracking-tight">0</div>
-                <div id="kpi-con-caso-pct" class="text-[11px] text-slate-400 mt-1">0 con código registrado</div>
-                <div class="absolute bottom-0 left-0 right-0 h-1 bg-emerald-500"></div>
+                <div id="kpi-con-caso" class="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-2 tracking-tight">0</div>
+                <div id="kpi-con-caso-pct" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">0 con código registrado</div>
             </div>
         </div>
 
-        <!-- Tabla de Datos -->
-        <div class="glass-card overflow-hidden">
+        <!-- Tabla de Datos Ejecutiva -->
+        <div class="executive-card overflow-hidden">
             <!-- Barra superior de la tabla -->
-            <div class="p-4 bg-slate-900/40 border-b border-slate-700/50 flex flex-wrap items-center justify-between gap-4">
-                <div class="text-sm font-semibold text-slate-300">
-                    Mostrando <span id="table-showing-start" class="text-white">0</span> - <span id="table-showing-end" class="text-white">0</span> de <span id="table-showing-total" class="text-white">0</span> registros
+            <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-900/30">
+                <div class="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                    Mostrando <span id="table-showing-start" class="font-bold text-slate-900 dark:text-white">0</span> - <span id="table-showing-end" class="font-bold text-slate-900 dark:text-white">0</span> de <span id="table-showing-total" class="font-bold text-slate-900 dark:text-white">0</span> casos
                 </div>
-                <div class="flex items-center gap-3">
-                    <span class="text-xs text-slate-400">Filas por página:</span>
-                    <select id="paginacion-tamano" onchange="cambiarTamanoPagina(this.value)" class="bg-slate-800 border border-slate-700 rounded px-2.5 py-1 text-xs text-white focus:outline-none">
+                <div class="flex items-center gap-2 text-xs">
+                    <span class="text-slate-500 dark:text-slate-400">Filas por página:</span>
+                    <select id="paginacion-tamano" onchange="cambiarTamanoPagina(this.value)" class="custom-input rounded-lg px-2.5 py-1 text-xs font-bold cursor-pointer">
                         <option value="25" selected>25</option>
                         <option value="50">50</option>
                         <option value="100">100</option>
@@ -384,16 +555,16 @@
                 </div>
             </div>
 
-            <!-- Contenedor scrollable de la tabla -->
-            <div class="overflow-x-auto max-h-[620px]">
+            <!-- Contenedor de la tabla -->
+            <div class="overflow-x-auto max-h-[640px]">
                 <table class="w-full text-left">
                     <thead>
                         <tr>
                             <th class="w-20">Unidad</th>
-                            <th class="w-24">No. OT</th>
+                            <th class="w-28">No. OT</th>
                             <th class="w-36">No. Orden Marca</th>
-                            <th class="w-32">Fecha Ingreso</th>
-                            <th class="w-56">Cliente</th>
+                            <th class="w-36">Fecha Ingreso</th>
+                            <th class="w-64">Nombre del Cliente</th>
                             <th>Descripción del Producto</th>
                             <th class="w-36">Modelo / RMS</th>
                             <th class="w-36">Serie del Equipo</th>
@@ -401,24 +572,55 @@
                         </tr>
                     </thead>
                     <tbody id="tabla-cuerpo">
-                        <!-- Generado por JS -->
+                        <!-- Filas dinámicas generadas por JS -->
                     </tbody>
                 </table>
             </div>
 
             <!-- Paginador inferior -->
-            <div class="p-4 bg-slate-900/40 border-t border-slate-700/50 flex items-center justify-between">
-                <div id="paginador-info" class="text-xs text-slate-400">
+            <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/30">
+                <div id="paginador-info" class="text-xs font-medium text-slate-500 dark:text-slate-400">
                     Página 1 de 1
                 </div>
                 <div class="flex items-center gap-2">
-                    <button id="btn-pag-prev" onclick="cambiarPagina(-1)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-xs font-medium">Anterior</button>
-                    <button id="btn-pag-next" onclick="cambiarPagina(1)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-xs font-medium">Siguiente</button>
+                    <button id="btn-pag-prev" onclick="cambiarPagina(-1)" class="px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed custom-input hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">Anterior</button>
+                    <button id="btn-pag-next" onclick="cambiarPagina(1)" class="px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed custom-input hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">Siguiente</button>
                 </div>
             </div>
         </div>
 
     </div>
+
+    <!-- Script de Gestión de Tema -->
+    <script>
+        function updateThemeUI() {
+            var isDark = document.documentElement.classList.contains('dark');
+            var btnLight = document.getElementById('btn-theme-light');
+            var btnDark = document.getElementById('btn-theme-dark');
+            if (!btnLight || !btnDark) return;
+            
+            if (isDark) {
+                btnDark.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer bg-blue-600 text-white shadow-sm';
+                btnLight.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer text-slate-400 hover:text-slate-200';
+            } else {
+                btnLight.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer bg-white text-blue-600 shadow-sm border border-slate-200/80';
+                btnDark.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer text-slate-500 hover:text-slate-900';
+            }
+        }
+
+        function setTheme(mode) {
+            if (mode === 'dark') {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme_garantias', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme_garantias', 'light');
+            }
+            updateThemeUI();
+        }
+
+        document.addEventListener('DOMContentLoaded', updateThemeUI);
+    </script>
 
     <!-- Scripts dinámicos con cache-buster -->
     <script>
