@@ -640,8 +640,10 @@
             if (rVal < startVal || rVal > endVal) return false;
 
             if (query.length > 0) {
+                const isSinOrdenQuery = (query.includes('SIN ORDEN') || query.includes('PENDIENTE') || query === 'SIN');
                 const match = (r.ot && r.ot.toUpperCase().includes(query)) ||
                               (r.no_caso_marca && r.no_caso_marca.toUpperCase().includes(query)) ||
+                              (isSinOrdenQuery && !r.no_caso_marca) ||
                               (r.cliente && r.cliente.toUpperCase().includes(query)) ||
                               (r.descripcion && r.descripcion.toUpperCase().includes(query)) ||
                               (r.modelo && r.modelo.toUpperCase().includes(query)) ||
@@ -698,15 +700,16 @@
 
         if (elCaso) elCaso.textContent = conCasoCount.toLocaleString();
         if (elCasoPct) {
+            const sinCaso = total - conCasoCount;
             if (marcaSeleccionada === 'HISENSE') {
-                if (elCasoTitle) elCasoTitle.textContent = 'Orden Portal Hisense';
-                elCasoPct.textContent = total > 0 ? '100% validadas en portal (9 dígitos)' : '0 en período';
+                if (elCasoTitle) elCasoTitle.textContent = 'Órdenes Portal Hisense';
+                elCasoPct.textContent = `${conCasoCount.toLocaleString()} con portal · ${sinCaso.toLocaleString()} pendientes de corregir`;
             } else if (marcaSeleccionada === 'LG') {
-                if (elCasoTitle) elCasoTitle.textContent = 'Orden Portal LG (RNN)';
-                elCasoPct.textContent = total > 0 ? '100% validadas en portal RNN' : '0 en período';
+                if (elCasoTitle) elCasoTitle.textContent = 'Órdenes Portal LG (RNN)';
+                elCasoPct.textContent = `${conCasoCount.toLocaleString()} con portal · ${sinCaso.toLocaleString()} pendientes de corregir`;
             } else if (marcaSeleccionada === 'ALL') {
-                if (elCasoTitle) elCasoTitle.textContent = 'Control de Casos Marca';
-                elCasoPct.textContent = total > 0 ? `${conCasoCount.toLocaleString()} con portal (${((conCasoCount / total) * 100).toFixed(1)}%)` : '0 casos';
+                if (elCasoTitle) elCasoTitle.textContent = 'Control Órdenes Marca';
+                elCasoPct.textContent = `${conCasoCount.toLocaleString()} registradas con portal (${total > 0 ? ((conCasoCount / total) * 100).toFixed(1) : 0}%)`;
             } else {
                 if (elCasoTitle) elCasoTitle.textContent = 'Control OT Interna';
                 elCasoPct.textContent = `${total.toLocaleString()} órdenes con No. OT SILVA`;
@@ -750,7 +753,7 @@
         let html = '';
         pageItems.forEach(r => {
             let noCasoBadge = '';
-            if (r.no_caso_marca) {
+            if (r.no_caso_marca && r.no_caso_marca.trim() !== '') {
                 noCasoBadge = `<div class="flex items-center justify-center gap-1.5">
                     <span class="badge badge-has-case font-mono font-bold">${r.no_caso_marca}</span>
                     <button onclick="copiarAlPortapapeles('${r.no_caso_marca}', 'No. Caso')" class="copy-btn text-slate-400 hover:text-blue-600" title="Copiar No. de Caso">
@@ -758,7 +761,13 @@
                     </button>
                 </div>`;
             } else {
-                noCasoBadge = '<span class="badge badge-na-case text-[10px]">No aplica portal</span>';
+                const marcaU = (r.marca || '').toUpperCase();
+                if (marcaU.includes('HISENSE') || marcaU.includes('LG')) {
+                    const label = marcaU.includes('HISENSE') ? 'Sin orden Hisense' : 'Sin RNN LG';
+                    noCasoBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 cursor-help" title="Pendiente de corrección: el usuario no registró el número de orden de portal">${label}</span>`;
+                } else {
+                    noCasoBadge = '<span class="text-slate-400 text-xs italic">--</span>';
+                }
             }
 
             const diagTag = (r.dias_diagnostico !== null && r.dias_diagnostico !== undefined && !isNaN(r.dias_diagnostico)) ? `<span class="text-emerald-600 dark:text-emerald-400 font-bold">${r.dias_diagnostico} d</span>` : '<span class="text-slate-400">-</span>';
@@ -1121,7 +1130,7 @@
             console.warn("Estilos de Hoja 1 omitidos:", e);
         }
 
-        // 2. Datos para Hoja 2: Detalle de Casos (14 columnas exactas, Col G Modelo, fechas formato Nicaragua)
+        // 2. Datos para Hoja 2: Detalle de Casos (14 columnas exactas, Col G Modelo, fechas formato Nicaragua, No. Orden Marca en blanco si no tiene portal)
         const rowsHoja2 = [
             ["SILVA INTERNACIONAL S.A."],
             ["AUDITORÍA DETALLADA DE CASOS DE GARANTÍA POR MARCA"],
@@ -1141,7 +1150,7 @@
             rowsHoja2.push([
                 r.ot || "",
                 r.marca || "",
-                r.no_caso_marca || "",
+                r.no_caso_marca || "", // Si no tiene portal, va en blanco "" para control de auditoría
                 formatFechaNica(r.fecha, true),
                 r.cliente || "",
                 r.descripcion || "",
@@ -1285,7 +1294,7 @@
             rows.push([
                 r.ot || "",
                 r.marca || "",
-                r.no_caso_marca || "",
+                r.no_caso_marca || "", // En blanco si no se registró en portal
                 formatFechaNica(r.fecha, true),
                 r.cliente || "",
                 r.descripcion || "",

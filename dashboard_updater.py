@@ -495,7 +495,8 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
                     if not is_warranty:
                         continue
 
-                    # REGLA 2: Hisense y LG requieren número de orden de portal
+                    # REGLA 2: Hisense y LG número de orden de portal (si no existe, va en blanco para auditoría de usuarios)
+                    no_caso = ""
                     if "HISENSE" in marca:
                         m9 = re.search(r'\b(2\d{8})\b', boleta_val)
                         if not m9:
@@ -503,8 +504,6 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
                             m9 = re.search(r'\b(2\d{8})\b', row_s)
                         if m9:
                             no_caso = m9.group(1)
-                        else:
-                            continue
                     elif "LG" in marca:
                         mrnn = re.search(r'RNN\d{12}', boleta_val, re.IGNORECASE)
                         if not mrnn:
@@ -512,8 +511,6 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
                             mrnn = re.search(r'RNN\d{12}', row_s, re.IGNORECASE)
                         if mrnn:
                             no_caso = mrnn.group(0).upper()
-                        else:
-                            continue
 
                     # Categoría y Tiempos de Respuesta
                     categoria = classify_category(desc_rep, marca, actividad_val)
