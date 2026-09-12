@@ -33,6 +33,25 @@
         9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dic'
     };
 
+    // Helper: Formato oficial de fecha español Nicaragua (DD/MM/AAAA [HH:mm])
+    function formatFechaNica(val, incluirHora = false) {
+        if (!val || val === '--' || val === 'N/A' || val === 'None') return '--';
+        const s = String(val).trim();
+        const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s](\d{1,2}):(\d{1,2}))?/);
+        if (m) {
+            const y = m[1];
+            const mo = m[2].padStart(2, '0');
+            const d = m[3].padStart(2, '0');
+            if (incluirHora && m[4] !== undefined) {
+                const h = m[4].padStart(2, '0');
+                const mi = m[5].padStart(2, '0');
+                return `${d}/${mo}/${y} ${h}:${mi}`;
+            }
+            return `${d}/${mo}/${y}`;
+        }
+        return s;
+    }
+
     function init() {
         if (!window.REPORTES_DATA) {
             console.warn("window.REPORTES_DATA no disponible aún. Reintentando...");
@@ -121,7 +140,6 @@
             if (tabDetalle) {
                 tabDetalle.className = "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs tracking-wide transition-all cursor-pointer text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white";
             }
-            // Redibujar gráficos para ajustar dimensiones
             setTimeout(refreshReporteCharts, 100);
         } else {
             if (viewMatriz) viewMatriz.classList.add('hidden');
@@ -213,7 +231,6 @@
     };
 
     function calcularMatriz() {
-        // Filtrar registros por rango de fechas y marca
         const startVal = matrizDesdeAnio * 100 + matrizDesdeMes;
         const endVal = matrizHastaAnio * 100 + matrizHastaMes;
 
@@ -248,7 +265,7 @@
             }
         }
 
-        // Determinar categorías activas según el tipo de desglose
+        // Determinar categorías activas según desglose
         const catCountsGlobal = {};
         records.forEach(r => {
             let catKey = '';
@@ -260,10 +277,8 @@
             catCountsGlobal[catKey] = (catCountsGlobal[catKey] || 0) + 1;
         });
 
-        // Ordenar categorías por volumen descendente
         const categoriasOrdenadas = Object.keys(catCountsGlobal).sort((a, b) => catCountsGlobal[b] - catCountsGlobal[a]);
 
-        // Estructura por mes
         const mesesData = {};
         mesesEnRango.forEach(m => {
             mesesData[m.key] = {
@@ -278,7 +293,6 @@
             });
         });
 
-        // Llenar datos
         let totalGeneralCasos = 0;
         const allDiagDias = [];
         const allCierreDias = [];
@@ -366,17 +380,17 @@
 
         if (!thead || !tbody || !tfoot) return;
 
-        // Thead
-        let headHtml = '<tr><th class="w-36">Mes / Período</th>';
+        // Thead: Data centrada excepto el título del mes
+        let headHtml = '<tr><th class="w-40 text-left px-4">Mes / Período</th>';
         categorias.forEach(cat => {
-            headHtml += `<th class="text-right px-3">${cat}</th>`;
+            headHtml += `<th class="text-center px-3">${cat}</th>`;
         });
-        headHtml += '<th class="text-right px-4 bg-blue-50/70 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 font-extrabold">Total Casos</th>';
-        headHtml += '<th class="text-right px-3 text-emerald-700 dark:text-emerald-400">Diag. Prom (Días)</th>';
-        headHtml += '<th class="text-right px-3 text-purple-700 dark:text-purple-400">Cierre Prom (Días)</th></tr>';
+        headHtml += '<th class="text-center px-4 bg-blue-50/70 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 font-extrabold">Total Casos</th>';
+        headHtml += '<th class="text-center px-3 text-emerald-700 dark:text-emerald-400">Diag. Prom (Días)</th>';
+        headHtml += '<th class="text-center px-3 text-purple-700 dark:text-purple-400">Cierre Prom (Días)</th></tr>';
         thead.innerHTML = headHtml;
 
-        // Tbody
+        // Tbody: Data centrada, ajustada y limpia
         let bodyHtml = '';
         mesesEnRango.forEach(m => {
             const rowData = mesesData[m.key];
@@ -384,7 +398,7 @@
             const avgC = rowData.cierreDias.length > 0 ? (rowData.cierreDias.reduce((a, b) => a + b, 0) / rowData.cierreDias.length).toFixed(1) : '-';
 
             bodyHtml += `<tr class="table-row-item">
-                <td class="font-bold text-slate-900 dark:text-white whitespace-nowrap flex items-center gap-2">
+                <td class="font-bold text-slate-900 dark:text-white whitespace-nowrap px-4 flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-blue-500"></span>
                     <span>${m.fullLabel}</span>
                 </td>`;
@@ -392,29 +406,29 @@
             categorias.forEach(cat => {
                 const count = rowData.categorias[cat] || 0;
                 const cellClass = count > 0 ? 'text-slate-900 dark:text-slate-100 font-semibold' : 'text-slate-400 dark:text-slate-600';
-                bodyHtml += `<td class="text-right px-3 ${cellClass}">${count > 0 ? count.toLocaleString() : '-'}</td>`;
+                bodyHtml += `<td class="text-center px-3 ${cellClass}">${count > 0 ? count.toLocaleString() : '-'}</td>`;
             });
 
-            bodyHtml += `<td class="text-right px-4 font-black text-blue-600 dark:text-blue-400 bg-blue-50/40 dark:bg-blue-950/20">${rowData.total.toLocaleString()}</td>
-                <td class="text-right px-3 font-semibold text-emerald-600 dark:text-emerald-400">${avgD !== '-' ? avgD + ' d' : '-'}</td>
-                <td class="text-right px-3 font-semibold text-purple-600 dark:text-purple-400">${avgC !== '-' ? avgC + ' d' : '-'}</td>
+            bodyHtml += `<td class="text-center px-4 font-black text-blue-600 dark:text-blue-400 bg-blue-50/40 dark:bg-blue-950/20">${rowData.total.toLocaleString()}</td>
+                <td class="text-center px-3 font-semibold text-emerald-600 dark:text-emerald-400">${avgD !== '-' ? avgD + ' d' : '-'}</td>
+                <td class="text-center px-3 font-semibold text-purple-600 dark:text-purple-400">${avgC !== '-' ? avgC + ' d' : '-'}</td>
             </tr>`;
         });
         tbody.innerHTML = bodyHtml;
 
-        // Tfoot
+        // Tfoot: Totales centrados
         const avgGlobalDiag = allDiagDias.length > 0 ? (allDiagDias.reduce((a, b) => a + b, 0) / allDiagDias.length).toFixed(1) + ' d' : '-';
         const avgGlobalCierre = allCierreDias.length > 0 ? (allCierreDias.reduce((a, b) => a + b, 0) / allCierreDias.length).toFixed(1) + ' d' : '-';
 
         let footHtml = `<tr class="bg-slate-100 dark:bg-slate-900 border-t-2 border-slate-300 dark:border-slate-700 font-black">
-            <td class="text-slate-900 dark:text-white uppercase tracking-wider text-xs">TOTALES / PROMEDIOS</td>`;
+            <td class="text-left px-4 text-slate-900 dark:text-white uppercase tracking-wider text-xs">TOTALES / PROMEDIOS</td>`;
         categorias.forEach(cat => {
             const cTotal = catCountsGlobal[cat] || 0;
-            footHtml += `<td class="text-right px-3 text-slate-900 dark:text-white">${cTotal.toLocaleString()}</td>`;
+            footHtml += `<td class="text-center px-3 text-slate-900 dark:text-white font-bold">${cTotal.toLocaleString()}</td>`;
         });
-        footHtml += `<td class="text-right px-4 text-blue-700 dark:text-blue-300 text-sm">${totalCasos.toLocaleString()}</td>
-            <td class="text-right px-3 text-emerald-700 dark:text-emerald-400 text-sm">${avgGlobalDiag}</td>
-            <td class="text-right px-3 text-purple-700 dark:text-purple-400 text-sm">${avgGlobalCierre}</td>
+        footHtml += `<td class="text-center px-4 text-blue-700 dark:text-blue-300 text-sm font-black">${totalCasos.toLocaleString()}</td>
+            <td class="text-center px-3 text-emerald-700 dark:text-emerald-400 text-sm font-black">${avgGlobalDiag}</td>
+            <td class="text-center px-3 text-purple-700 dark:text-purple-400 text-sm font-black">${avgGlobalCierre}</td>
         </tr>`;
         tfoot.innerHTML = footHtml;
     }
@@ -569,6 +583,238 @@
         if (currentMainView === 'matriz') {
             calcularMatriz();
         }
+    };
+
+    // =========================================================================
+    // LÓGICA DE AUDITORÍA DETALLADA (TABLA DE OTs)
+    // =========================================================================
+    function deseleccionarBotonesRapidosDetalle() {
+        document.querySelectorAll('#view-auditoria-detallada .btn-periodo').forEach(b => b.classList.remove('active'));
+    }
+
+    window.setRangoRapido = function(dAnio, dMes, hAnio, hMes, btnElement) {
+        deseleccionarBotonesRapidosDetalle();
+        if (btnElement) btnElement.classList.add('active');
+
+        const elDMes = document.getElementById('filtro-desde-mes');
+        const elDAnio = document.getElementById('filtro-desde-anio');
+        const elHMes = document.getElementById('filtro-hasta-mes');
+        const elHAnio = document.getElementById('filtro-hasta-anio');
+
+        if (elDMes) elDMes.value = String(dMes);
+        if (elDAnio) elDAnio.value = String(dAnio);
+        if (elHMes) elHMes.value = String(hMes);
+        if (elHAnio) elHAnio.value = String(hAnio);
+
+        currentPage = 1;
+        aplicarFiltrosDetalle();
+    };
+
+    window.limpiarBuscador = function() {
+        const input = document.getElementById('buscador-general');
+        if (input) {
+            input.value = '';
+            document.getElementById('btn-clear-search')?.classList.add('hidden');
+            currentPage = 1;
+            aplicarFiltrosDetalle();
+        }
+    };
+
+    function aplicarFiltrosDetalle() {
+        const fMarca = document.getElementById('filtro-marca')?.value || 'ALL';
+        const dMes = parseInt(document.getElementById('filtro-desde-mes')?.value || 1);
+        const dAnio = parseInt(document.getElementById('filtro-desde-anio')?.value || 2026);
+        const hMes = parseInt(document.getElementById('filtro-hasta-mes')?.value || 8);
+        const hAnio = parseInt(document.getElementById('filtro-hasta-anio')?.value || 2026);
+        const query = (document.getElementById('buscador-general')?.value || '').trim().toUpperCase();
+
+        const startVal = dAnio * 100 + dMes;
+        const endVal = hAnio * 100 + hMes;
+
+        filteredDetalleRecords = allRecords.filter(r => {
+            if (fMarca !== 'ALL' && (r.marca || '').toUpperCase() !== fMarca) return false;
+
+            const anio = parseInt(r.anio) || 2026;
+            const mesNum = parseInt(r.mesNum) || 1;
+            const rVal = anio * 100 + mesNum;
+            if (rVal < startVal || rVal > endVal) return false;
+
+            if (query.length > 0) {
+                const match = (r.ot && r.ot.toUpperCase().includes(query)) ||
+                              (r.no_caso_marca && r.no_caso_marca.toUpperCase().includes(query)) ||
+                              (r.cliente && r.cliente.toUpperCase().includes(query)) ||
+                              (r.descripcion && r.descripcion.toUpperCase().includes(query)) ||
+                              (r.modelo && r.modelo.toUpperCase().includes(query)) ||
+                              (r.rms && r.rms.toUpperCase().includes(query)) ||
+                              (r.serie && r.serie.toUpperCase().includes(query)) ||
+                              (r.categoria && r.categoria.toUpperCase().includes(query));
+                if (!match) return false;
+            }
+            return true;
+        });
+
+        // Actualizar KPIs Detalle
+        actualizarKPIsDetalle(fMarca);
+
+        // Renderizar Tabla Detalle
+        renderTablaDetalle();
+    }
+
+    function actualizarKPIsDetalle(marcaSeleccionada) {
+        const total = filteredDetalleRecords.length;
+        let garTotalCount = 0;
+        let garParcialCount = 0;
+        let conCasoCount = 0;
+
+        filteredDetalleRecords.forEach(r => {
+            const tg = (r.tipo_garantia || '').toUpperCase();
+            if (tg.includes('PARCIAL')) {
+                garParcialCount++;
+            } else {
+                garTotalCount++;
+            }
+
+            if (r.no_caso_marca && r.no_caso_marca.trim() !== '') {
+                conCasoCount++;
+            }
+        });
+
+        const elTot = document.getElementById('kpi-total');
+        if (elTot) elTot.textContent = total.toLocaleString();
+
+        const elGarTot = document.getElementById('kpi-total-gar');
+        const elGarTotPct = document.getElementById('kpi-total-gar-pct');
+        if (elGarTot) elGarTot.textContent = garTotalCount.toLocaleString();
+        if (elGarTotPct) elGarTotPct.textContent = total > 0 ? `${((garTotalCount / total) * 100).toFixed(1)}% del total` : '0% del total';
+
+        const elGarParc = document.getElementById('kpi-parcial-gar');
+        const elGarParcPct = document.getElementById('kpi-parcial-gar-pct');
+        if (elGarParc) elGarParc.textContent = garParcialCount.toLocaleString();
+        if (elGarParcPct) elGarParcPct.textContent = total > 0 ? `${((garParcialCount / total) * 100).toFixed(1)}% del total` : '0% del total';
+
+        const elCaso = document.getElementById('kpi-con-caso');
+        const elCasoPct = document.getElementById('kpi-con-caso-pct');
+        const elCasoTitle = document.getElementById('kpi-con-caso-title');
+
+        if (elCaso) elCaso.textContent = conCasoCount.toLocaleString();
+        if (elCasoPct) {
+            if (marcaSeleccionada === 'HISENSE') {
+                if (elCasoTitle) elCasoTitle.textContent = 'Orden Portal Hisense';
+                elCasoPct.textContent = total > 0 ? '100% validadas en portal (9 dígitos)' : '0 en período';
+            } else if (marcaSeleccionada === 'LG') {
+                if (elCasoTitle) elCasoTitle.textContent = 'Orden Portal LG (RNN)';
+                elCasoPct.textContent = total > 0 ? '100% validadas en portal RNN' : '0 en período';
+            } else if (marcaSeleccionada === 'ALL') {
+                if (elCasoTitle) elCasoTitle.textContent = 'Control de Casos Marca';
+                elCasoPct.textContent = total > 0 ? `${conCasoCount.toLocaleString()} con portal (${((conCasoCount / total) * 100).toFixed(1)}%)` : '0 casos';
+            } else {
+                if (elCasoTitle) elCasoTitle.textContent = 'Control OT Interna';
+                elCasoPct.textContent = `${total.toLocaleString()} órdenes con No. OT SILVA`;
+            }
+        }
+    }
+
+    function renderTablaDetalle() {
+        const tbody = document.getElementById('tabla-cuerpo');
+        if (!tbody) return;
+
+        const total = filteredDetalleRecords.length;
+        const totalPages = Math.ceil(total / pageSize) || 1;
+        if (currentPage > totalPages) currentPage = totalPages;
+
+        const startIdx = (currentPage - 1) * pageSize;
+        const endIdx = Math.min(startIdx + pageSize, total);
+        const pageItems = filteredDetalleRecords.slice(startIdx, endIdx);
+
+        // Indicadores paginador
+        const elShowingStart = document.getElementById('table-showing-start');
+        const elShowingEnd = document.getElementById('table-showing-end');
+        const elShowingTotal = document.getElementById('table-showing-total');
+        const elPagInfo = document.getElementById('paginador-info');
+        const btnPrev = document.getElementById('btn-pag-prev');
+        const btnNext = document.getElementById('btn-pag-next');
+
+        if (elShowingStart) elShowingStart.textContent = total > 0 ? (startIdx + 1).toLocaleString() : '0';
+        if (elShowingEnd) elShowingEnd.textContent = endIdx.toLocaleString();
+        if (elShowingTotal) elShowingTotal.textContent = total.toLocaleString();
+        if (elPagInfo) elPagInfo.textContent = `Página ${currentPage.toLocaleString()} de ${totalPages.toLocaleString()}`;
+
+        if (btnPrev) btnPrev.disabled = (currentPage <= 1);
+        if (btnNext) btnNext.disabled = (currentPage >= totalPages);
+
+        if (pageItems.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-12 text-slate-400 dark:text-slate-500 font-medium">No se encontraron casos de garantía con los filtros seleccionados.</td></tr>`;
+            return;
+        }
+
+        let html = '';
+        pageItems.forEach(r => {
+            let noCasoBadge = '';
+            if (r.no_caso_marca) {
+                noCasoBadge = `<div class="flex items-center justify-center gap-1.5">
+                    <span class="badge badge-has-case font-mono font-bold">${r.no_caso_marca}</span>
+                    <button onclick="copiarAlPortapapeles('${r.no_caso_marca}', 'No. Caso')" class="copy-btn text-slate-400 hover:text-blue-600" title="Copiar No. de Caso">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    </button>
+                </div>`;
+            } else {
+                noCasoBadge = '<span class="badge badge-na-case text-[10px]">No aplica portal</span>';
+            }
+
+            const diagTag = (r.dias_diagnostico !== null && r.dias_diagnostico !== undefined && !isNaN(r.dias_diagnostico)) ? `<span class="text-emerald-600 dark:text-emerald-400 font-bold">${r.dias_diagnostico} d</span>` : '<span class="text-slate-400">-</span>';
+            const cierreTag = (r.dias_cierre !== null && r.dias_cierre !== undefined && !isNaN(r.dias_cierre)) ? `<span class="text-purple-600 dark:text-purple-400 font-bold">${r.dias_cierre} d</span>` : '<span class="text-slate-400">-</span>';
+
+            // Formato de fecha español Nicaragua (DD/MM/AAAA [HH:mm])
+            const fechaNica = formatFechaNica(r.fecha, true);
+
+            html += `<tr class="table-row-item text-xs">
+                <td class="text-center">
+                    <div class="flex items-center justify-center gap-1.5">
+                        ${r.link ? `<a href="${r.link}" target="_blank" class="font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">${r.ot}<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg></a>` : `<span class="font-bold text-slate-800 dark:text-slate-200">${r.ot}</span>`}
+                        <button onclick="copiarAlPortapapeles('${r.ot}', 'No. OT')" class="copy-btn text-slate-400 hover:text-blue-600" title="Copiar No. OT">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                        </button>
+                    </div>
+                </td>
+                <td class="text-center">${noCasoBadge}</td>
+                <td class="text-center text-slate-700 dark:text-slate-300 whitespace-nowrap font-medium font-mono">${fechaNica}</td>
+                <td class="text-left font-medium text-slate-900 dark:text-slate-100 whitespace-normal break-words leading-relaxed">${r.cliente || '--'}</td>
+                <td class="text-left text-slate-700 dark:text-slate-300 whitespace-normal break-words leading-relaxed">${r.descripcion || '--'}</td>
+                <td class="text-center font-bold text-slate-900 dark:text-white font-mono text-xs">${r.modelo || '--'}</td>
+                <td class="text-center">${r.serie ? `<span class="serie-chip">${r.serie}</span>` : '<span class="text-slate-400 text-xs italic">S/N</span>'}</td>
+                <td class="text-center"><span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">${r.categoria || 'General'}</span></td>
+                <td class="text-center">${diagTag}</td>
+                <td class="text-center">${cierreTag}</td>
+            </tr>`;
+        });
+
+        tbody.innerHTML = html;
+    }
+
+    window.cambiarPagina = function(delta) {
+        currentPage += delta;
+        renderTablaDetalle();
+    };
+
+    window.cambiarTamanoPagina = function(tam) {
+        pageSize = parseInt(tam) || 25;
+        currentPage = 1;
+        renderTablaDetalle();
+    };
+
+    window.copiarAlPortapapeles = function(texto, label) {
+        if (!texto) return;
+        navigator.clipboard.writeText(texto).then(() => {
+            const toast = document.getElementById('toast-copy');
+            const msg = document.getElementById('toast-msg');
+            if (toast && msg) {
+                msg.textContent = `${label} "${texto}" copiado`;
+                toast.style.display = 'flex';
+                setTimeout(() => { toast.style.display = 'none'; }, 2000);
+            }
+        }).catch(err => {
+            console.error('Error al copiar:', err);
+        });
     };
 
     // =========================================================================
@@ -735,7 +981,7 @@
         const rowsHoja1 = [
             ["SILVA INTERNACIONAL S.A."],
             ["INFORME GERENCIAL DE CASOS DE GARANTÍA Y TIEMPOS DE RESPUESTA"],
-            [`Período: ${MESES_NOMBRES[matrizDesdeMes]} ${matrizDesdeAnio} a ${MESES_NOMBRES[matrizHastaMes]} ${matrizHastaAnio}   |   Filtro Marca: ${matrizMarca === 'ALL' ? 'Todas las Marcas (Consolidado)' : matrizMarca}   |   Total Casos: ${records.length.toLocaleString()}`],
+            [`Período: ${MESES_NOMBRES[matrizDesdeMes]} ${matrizDesdeAnio} a ${MESES_NOMBRES[matrizHastaMes]} ${matrizHastaAnio}   |   Filtro Marca: ${matrizMarca === 'ALL' ? 'Todas las Marcas (Consolidado)' : matrizMarca}   |   Total Casos: ${records.length.toLocaleString()}   |   Formato Oficial Nicaragua`],
             [] // Espaciado
         ];
 
@@ -748,22 +994,27 @@
             const avgC = d.cierreDias.length > 0 ? parseFloat((d.cierreDias.reduce((a, b) => a + b, 0) / d.cierreDias.length).toFixed(1)) : null;
 
             const row = [m.label];
-            categorias.forEach(c => { row.push(d.categorias[c] || 0); });
+            categorias.forEach(cat => {
+                row.push(d.categorias[cat] || 0);
+            });
             row.push(d.total);
             row.push(avgD !== null ? avgD : "-");
             row.push(avgC !== null ? avgC : "-");
             rowsHoja1.push(row);
         });
 
-        // Fila Totales
-        const avgTotD = allDiagDias.length > 0 ? parseFloat((allDiagDias.reduce((a, b) => a + b, 0) / allDiagDias.length).toFixed(1)) : null;
-        const avgTotC = allCierreDias.length > 0 ? parseFloat((allCierreDias.reduce((a, b) => a + b, 0) / allCierreDias.length).toFixed(1)) : null;
-        const totalRow = ["TOTAL / PROMEDIO GENERAL"];
-        categorias.forEach(c => { totalRow.push(catCountsGlobal[c] || 0); });
-        totalRow.push(records.length);
-        totalRow.push(avgTotD !== null ? avgTotD : "-");
-        totalRow.push(avgTotC !== null ? avgTotC : "-");
-        rowsHoja1.push(totalRow);
+        // Fila de Totales Hoja 1
+        const avgGlobalDiag = allDiagDias.length > 0 ? parseFloat((allDiagDias.reduce((a, b) => a + b, 0) / allDiagDias.length).toFixed(1)) : null;
+        const avgGlobalCierre = allCierreDias.length > 0 ? parseFloat((allCierreDias.reduce((a, b) => a + b, 0) / allCierreDias.length).toFixed(1)) : null;
+
+        const rowTotal = ["TOTALES / PROMEDIOS"];
+        categorias.forEach(cat => {
+            rowTotal.push(catCountsGlobal[cat] || 0);
+        });
+        rowTotal.push(records.length);
+        rowTotal.push(avgGlobalDiag !== null ? avgGlobalDiag : "-");
+        rowTotal.push(avgGlobalCierre !== null ? avgGlobalCierre : "-");
+        rowsHoja1.push(rowTotal);
 
         const ws1 = XLSX.utils.aoa_to_sheet(rowsHoja1);
 
@@ -775,14 +1026,14 @@
             for (let c = 0; c < headersH1.length; c++) {
                 const ref = XLSX.utils.encode_cell({ r: 4, c });
                 if (ws1[ref]) {
-                    let bg = "1E3A8A";
-                    if (c === headersH1.length - 3) bg = "0F2942";
-                    else if (c === headersH1.length - 2) bg = "065F46";
-                    else if (c === headersH1.length - 1) bg = "5B21B6";
+                    let fillRgb = "0F2942";
+                    if (c === headersH1.length - 3) fillRgb = "1E3A8A";
+                    else if (c === headersH1.length - 2) fillRgb = "065F46";
+                    else if (c === headersH1.length - 1) fillRgb = "5B21B6";
 
                     ws1[ref].s = {
                         font: { name: "Calibri", sz: 10, bold: true, color: { rgb: "FFFFFF" } },
-                        fill: { fgColor: { rgb: bg } },
+                        fill: { fgColor: { rgb: fillRgb } },
                         alignment: { horizontal: "center", vertical: "center", wrapText: true },
                         border: EXCEL_STYLES.borderThin
                     };
@@ -790,30 +1041,37 @@
             }
 
             // Data rows (Index 5 to rowsHoja1.length - 2)
-            const rowHeights = [{ hpt: 26 }, { hpt: 20 }, { hpt: 18 }, { hpt: 8 }, { hpt: 28 }];
+            const rowHeights1 = [{ hpt: 26 }, { hpt: 20 }, { hpt: 18 }, { hpt: 8 }, { hpt: 28 }];
             for (let r = 5; r < rowsHoja1.length - 1; r++) {
-                rowHeights.push({ hpt: 20 });
+                rowHeights1.push({ hpt: 20 });
                 const isOdd = (r % 2 === 1);
                 const bgRow = isOdd ? "F8FAFC" : "FFFFFF";
 
                 for (let c = 0; c < headersH1.length; c++) {
                     const ref = XLSX.utils.encode_cell({ r, c });
                     if (ws1[ref]) {
-                        const isMes = (c === 0);
-                        const isTot = (c === headersH1.length - 3);
-                        const isDiag = (c === headersH1.length - 2);
-                        const isCierre = (c === headersH1.length - 1);
-
-                        let align = isMes ? "left" : "right";
+                        let align = "center";
+                        let fontBold = false;
                         let fontColor = "0F172A";
-                        let fontBold = isMes || isTot;
                         let cellBg = bgRow;
 
-                        if (isTot) { cellBg = isOdd ? "EFF6FF" : "F0F7FF"; fontColor = "1E3A8A"; }
-                        else if (isDiag) { cellBg = isOdd ? "ECFDF5" : "F0FDF4"; fontColor = "047857"; fontBold = true; }
-                        else if (isCierre) { cellBg = isOdd ? "F5F3FF" : "FAF5FF"; fontColor = "7C3AED"; fontBold = true; }
-
-                        if (ws1[ref].v === "-") align = "center";
+                        if (c === 0) {
+                            align = "left";
+                            fontBold = true;
+                            fontColor = "1E293B";
+                        } else if (c === headersH1.length - 3) {
+                            fontBold = true;
+                            fontColor = "1D4ED8";
+                            cellBg = isOdd ? "EFF6FF" : "F0F7FF";
+                        } else if (c === headersH1.length - 2) {
+                            fontBold = (ws1[ref].v !== "-");
+                            fontColor = "047857";
+                            cellBg = isOdd ? "ECFDF5" : "F0FDF4";
+                        } else if (c === headersH1.length - 1) {
+                            fontBold = (ws1[ref].v !== "-");
+                            fontColor = "7C3AED";
+                            cellBg = isOdd ? "F5F3FF" : "FAF5FF";
+                        }
 
                         ws1[ref].s = {
                             font: { name: "Calibri", sz: 10, bold: fontBold, color: { rgb: fontColor } },
@@ -822,56 +1080,52 @@
                             border: EXCEL_STYLES.borderData
                         };
                         if (typeof ws1[ref].v === 'number') {
-                            ws1[ref].z = (isDiag || isCierre) ? "0.0" : "#,##0";
+                            ws1[ref].z = (c >= headersH1.length - 2) ? "0.0" : "#,##0";
                         }
                     }
                 }
             }
 
-            // Total row (Index rowsHoja1.length - 1)
-            const lastR = rowsHoja1.length - 1;
-            rowHeights.push({ hpt: 24 });
+            // Totales row (Last row)
+            const lastRowIdx = rowsHoja1.length - 1;
+            rowHeights1.push({ hpt: 24 });
             for (let c = 0; c < headersH1.length; c++) {
-                const ref = XLSX.utils.encode_cell({ r: lastR, c });
+                const ref = XLSX.utils.encode_cell({ r: lastRowIdx, c });
                 if (ws1[ref]) {
-                    const isDiag = (c === headersH1.length - 2);
-                    const isCierre = (c === headersH1.length - 1);
-                    const isTot = (c === headersH1.length - 3);
-
-                    let fontColor = "0F2942";
-                    if (isTot) fontColor = "1E3A8A";
-                    else if (isDiag) fontColor = "047857";
-                    else if (isCierre) fontColor = "7C3AED";
+                    let fontColor = "0F172A";
+                    let fillRgb = "E2E8F0";
+                    if (c === headersH1.length - 3) fontColor = "1E3A8A";
+                    else if (c === headersH1.length - 2) fontColor = "065F46";
+                    else if (c === headersH1.length - 1) fontColor = "5B21B6";
 
                     ws1[ref].s = {
                         font: { name: "Calibri", sz: 10.5, bold: true, color: { rgb: fontColor } },
-                        fill: { fgColor: { rgb: "E2E8F0" } },
-                        alignment: { horizontal: c === 0 ? "left" : "right", vertical: "center" },
+                        fill: { fgColor: { rgb: fillRgb } },
+                        alignment: { horizontal: c === 0 ? "left" : "center", vertical: "center" },
                         border: EXCEL_STYLES.borderTotal
                     };
                     if (typeof ws1[ref].v === 'number') {
-                        ws1[ref].z = (isDiag || isCierre) ? "0.0" : "#,##0";
+                        ws1[ref].z = (c >= headersH1.length - 2) ? "0.0" : "#,##0";
                     }
                 }
             }
 
-            ws1['!rows'] = rowHeights;
-            ws1['!cols'] = [
-                { wch: 22 },
-                ...categorias.map(() => ({ wch: 20 })),
-                { wch: 16 },
-                { wch: 24 },
-                { wch: 24 }
-            ];
+            ws1['!rows'] = rowHeights1;
+            const colWidths1 = [{ wch: 22 }];
+            for (let c = 1; c < headersH1.length - 3; c++) colWidths1.push({ wch: 18 });
+            colWidths1.push({ wch: 16 }); // Total Casos
+            colWidths1.push({ wch: 22 }); // Diag Prom
+            colWidths1.push({ wch: 22 }); // Cierre Prom
+            ws1['!cols'] = colWidths1;
         } catch (e) {
             console.warn("Estilos de Hoja 1 omitidos:", e);
         }
 
-        // 2. Datos para Hoja 2: Detalle de Casos (14 Columnas exactas - SIN Estatus)
+        // 2. Datos para Hoja 2: Detalle de Casos (14 columnas exactas, Col G Modelo, fechas formato Nicaragua)
         const rowsHoja2 = [
             ["SILVA INTERNACIONAL S.A."],
             ["AUDITORÍA DETALLADA DE CASOS DE GARANTÍA POR MARCA"],
-            [`Período: ${MESES_NOMBRES[matrizDesdeMes]} ${matrizDesdeAnio} a ${MESES_NOMBRES[matrizHastaMes]} ${matrizHastaAnio}   |   Marca: ${matrizMarca === 'ALL' ? 'Todas las Marcas' : matrizMarca}   |   Total Casos: ${records.length.toLocaleString()}   |   Criterio: Casos de Garantía (Excluye Servicios)`],
+            [`Período: ${MESES_NOMBRES[matrizDesdeMes]} ${matrizDesdeAnio} a ${MESES_NOMBRES[matrizHastaMes]} ${matrizHastaAnio}   |   Marca: ${matrizMarca === 'ALL' ? 'Todas las Marcas' : matrizMarca}   |   Total Casos: ${records.length.toLocaleString()}   |   Formato Fecha: DD/MM/AAAA`],
             [] // Espaciado
         ];
 
@@ -888,16 +1142,16 @@
                 r.ot || "",
                 r.marca || "",
                 r.no_caso_marca || "",
-                r.fecha || "",
+                formatFechaNica(r.fecha, true),
                 r.cliente || "",
                 r.descripcion || "",
                 r.modelo || "",
                 r.serie || "",
                 r.categoria || "",
                 r.tipo_garantia || "",
-                r.fecha_diagnostico || "",
+                formatFechaNica(r.fecha_diagnostico, false),
                 r.dias_diagnostico !== null && r.dias_diagnostico !== undefined && !isNaN(r.dias_diagnostico) ? parseFloat(r.dias_diagnostico) : "-",
-                r.fecha_cierre || "",
+                formatFechaNica(r.fecha_cierre, false),
                 r.dias_cierre !== null && r.dias_cierre !== undefined && !isNaN(r.dias_cierre) ? parseFloat(r.dias_cierre) : "-"
             ]);
         });
@@ -942,13 +1196,11 @@
                         else if (c === 4 || c === 5) { align = "left"; }
                         else if (c === 6) { fontBold = true; fontColor = "0F172A"; }
                         else if (c === 11) {
-                            align = ws2[ref].v === "-" ? "center" : "right";
                             fontBold = (ws2[ref].v !== "-");
                             fontColor = "047857";
                             cellBg = isOdd ? "ECFDF5" : "F0FDF4";
                         }
                         else if (c === 13) {
-                            align = ws2[ref].v === "-" ? "center" : "right";
                             fontBold = (ws2[ref].v !== "-");
                             fontColor = "7C3AED";
                             cellBg = isOdd ? "F5F3FF" : "FAF5FF";
@@ -957,7 +1209,7 @@
                         ws2[ref].s = {
                             font: { name: "Calibri", sz: 10, bold: fontBold, color: { rgb: fontColor } },
                             fill: { fgColor: { rgb: cellBg } },
-                            alignment: { horizontal: align, vertical: "center", wrapText: (c === 5) },
+                            alignment: { horizontal: align, vertical: "center", wrapText: (c === 4 || c === 5) },
                             border: EXCEL_STYLES.borderData
                         };
                         if (typeof ws2[ref].v === 'number') {
@@ -972,7 +1224,7 @@
                 { wch: 12 }, // No. OT
                 { wch: 16 }, // Marca
                 { wch: 22 }, // No. Orden Marca
-                { wch: 18 }, // Fecha Ingreso
+                { wch: 20 }, // Fecha Ingreso
                 { wch: 32 }, // Cliente
                 { wch: 44 }, // Descripcion
                 { wch: 24 }, // Modelo (Col G)
@@ -1017,7 +1269,7 @@
         const rows = [
             ["SILVA INTERNACIONAL S.A."],
             ["AUDITORÍA DETALLADA DE CASOS DE GARANTÍA POR MARCA"],
-            [`Período: ${MESES_NOMBRES[dMes]} ${dAnio} a ${MESES_NOMBRES[hMes]} ${hAnio}   |   Marca: ${fMarca === 'ALL' ? 'Todas las Marcas' : fMarca}   |   Total Casos: ${filteredDetalleRecords.length.toLocaleString()}   |   Criterio: Casos de Garantía (Excluye Servicios)`],
+            [`Período: ${MESES_NOMBRES[dMes]} ${dAnio} a ${MESES_NOMBRES[hMes]} ${hAnio}   |   Marca: ${fMarca === 'ALL' ? 'Todas las Marcas' : fMarca}   |   Total Casos: ${filteredDetalleRecords.length.toLocaleString()}   |   Formato Fecha: DD/MM/AAAA`],
             [] // Espaciado
         ];
 
@@ -1034,16 +1286,16 @@
                 r.ot || "",
                 r.marca || "",
                 r.no_caso_marca || "",
-                r.fecha || "",
+                formatFechaNica(r.fecha, true),
                 r.cliente || "",
                 r.descripcion || "",
                 r.modelo || "",
                 r.serie || "",
                 r.categoria || "",
                 r.tipo_garantia || "",
-                r.fecha_diagnostico || "",
+                formatFechaNica(r.fecha_diagnostico, false),
                 r.dias_diagnostico !== null && r.dias_diagnostico !== undefined && !isNaN(r.dias_diagnostico) ? parseFloat(r.dias_diagnostico) : "-",
-                r.fecha_cierre || "",
+                formatFechaNica(r.fecha_cierre, false),
                 r.dias_cierre !== null && r.dias_cierre !== undefined && !isNaN(r.dias_cierre) ? parseFloat(r.dias_cierre) : "-"
             ]);
         });
@@ -1087,13 +1339,11 @@
                         else if (c === 4 || c === 5) { align = "left"; }
                         else if (c === 6) { fontBold = true; fontColor = "0F172A"; }
                         else if (c === 11) {
-                            align = ws[ref].v === "-" ? "center" : "right";
                             fontBold = (ws[ref].v !== "-");
                             fontColor = "047857";
                             cellBg = isOdd ? "ECFDF5" : "F0FDF4";
                         }
                         else if (c === 13) {
-                            align = ws[ref].v === "-" ? "center" : "right";
                             fontBold = (ws[ref].v !== "-");
                             fontColor = "7C3AED";
                             cellBg = isOdd ? "F5F3FF" : "FAF5FF";
@@ -1102,7 +1352,7 @@
                         ws[ref].s = {
                             font: { name: "Calibri", sz: 10, bold: fontBold, color: { rgb: fontColor } },
                             fill: { fgColor: { rgb: cellBg } },
-                            alignment: { horizontal: align, vertical: "center", wrapText: (c === 5) },
+                            alignment: { horizontal: align, vertical: "center", wrapText: (c === 4 || c === 5) },
                             border: EXCEL_STYLES.borderData
                         };
                         if (typeof ws[ref].v === 'number') {
@@ -1117,7 +1367,7 @@
                 { wch: 12 }, // No. OT
                 { wch: 16 }, // Marca
                 { wch: 22 }, // No. Orden Marca
-                { wch: 18 }, // Fecha Ingreso
+                { wch: 20 }, // Fecha Ingreso
                 { wch: 32 }, // Cliente
                 { wch: 44 }, // Descripcion
                 { wch: 24 }, // Modelo (Col G)
