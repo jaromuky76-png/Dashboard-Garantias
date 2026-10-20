@@ -277,7 +277,7 @@
             catCountsGlobal[catKey] = (catCountsGlobal[catKey] || 0) + 1;
         });
 
-        const categoriasOrdenadas = Object.keys(catCountsGlobal).sort((a, b) => catCountsGlobal[b] - catCountsGlobal[a]);
+        const categoriasOrdenadas = Object.keys(catCountsGlobal).sort((a, b) => (a === 'Otras Categorías' ? 1 : (b === 'Otras Categorías' ? -1 : catCountsGlobal[b] - catCountsGlobal[a])));
 
         const mesesData = {};
         mesesEnRango.forEach(m => {
@@ -952,7 +952,7 @@
             else catKey = r.tipo_garantia || 'SIN ESPECIFICAR';
             catCountsGlobal[catKey] = (catCountsGlobal[catKey] || 0) + 1;
         });
-        const categorias = Object.keys(catCountsGlobal).sort((a, b) => catCountsGlobal[b] - catCountsGlobal[a]);
+        const categorias = Object.keys(catCountsGlobal).sort((a, b) => (a === 'Otras Categorías' ? 1 : (b === 'Otras Categorías' ? -1 : catCountsGlobal[b] - catCountsGlobal[a])));
 
         const mesesData = {};
         mesesEnRango.forEach(m => {

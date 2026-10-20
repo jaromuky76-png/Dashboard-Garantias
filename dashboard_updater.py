@@ -133,22 +133,110 @@ def parse_dt(s):
             pass
     return None
 
-def classify_category(desc, marca, act=""):
-    text = f"{desc} {marca} {act}".upper()
-    if any(k in text for k in ["BTU", "EVAPORADOR", "CONDENSADOR", "SEER", "MINI SPLIT", "MINISPLIT", "AIRE ACONDICIONADO", "AA "]):
-        return "Climatización (A/C)"
-    if any(k in text for k in ["REFRIGERAD", "LAVADORA", "SECADORA", "CONGELADOR", "MICROONDAS", "ESTUFA", "DISPENSADOR", "ENFRIADOR", "EXHIBIDOR"]):
-        return "Línea Blanca"
-    if any(k in text for k in ["TELEVISOR", " TV ", "TV-", "SMART TV", "NANOCELL", "OLED", "PANTALLA", "PARLANTE", "SOUNDBAR", "BARRA DE SONIDO", "AUDIO"]):
+def is_valid_desc(d):
+    if not d: return False
+    du = clean_text(d)
+    if du in ("--", "-", "**", "*", "0", "N/A", "#N/A", "NONE", "NULL", "", "DENTRO", "OFRECER SERVICIO"):
+        return False
+    if "VISITA A DOMICILIO" in du or "CONCEPTO DE DIAGNOSTICO" in du:
+        return False
+    return True
+
+def classify_category(desc, marca, act="", mod=""):
+    text = " " + clean_text(f"{desc} {mod} {act}") + " "
+    marca_u = clean_text(marca or "")
+
+    # 1. Audio y Video (TV)
+    tv_keywords = [
+        "TELEVISOR", " TV ", "TV-", "SMART TV", "QLED", "ULED", "QNED", "OLED", "NANOCELL",
+        "SMART UHD", "SMART HD", "SMART LCD", "SMART FHD", "4K", "THINQ", "WEBOS",
+        "PANTALLA", "PARLANTE", "BOCINA", "SOUNDBAR", "BARRA DE SONIDO", "AUDIO", "XBOOM",
+        "TEATRO EN CASA", "SUBWOOFER", "RADIO", "AURICULAR", "AUDIFONO", "PROYECTOR"
+    ]
+    if any(k in text for k in tv_keywords) or re.search(r"\bTV\b", text) or re.search(r"\b(32|40|43|50|55|58|65|70|75|85|86)(A4|A6|Q6|QD|U6|U7|U8|UR|UT|UQ|UP|UA|LR|LM|LJ|UN|UM|NANO|QNED|OLED)", text):
         return "Audio y Video (TV)"
-    if any(k in text for k in ["TRUPER", "PRETUL", "MAKITA", "DEWALT", "MILWAUKEE", "STANLEY", "TALADRO", "ESMERIL", "SIERRA", "BOMBA", "HIDROLAVADORA", "DESBROZADORA", "GENERADOR", "COMPRESOR", "SOLDADOR", "MOTOBOMBA", "PULIDORA"]):
+
+    # 2. Climatización (A/C)
+    ac_keywords = [
+        "BTU", "EVAPORADOR", "CONDENSADOR", "SEER", "MINI SPLIT", "MINISPLIT",
+        "AIRE ACONDICIONADO", " A/C ", " AA ", "DESHUMIDIFICADOR", "DESHUMIFICADOR",
+        "PURIFICADOR DE AIRE", "CORTINA DE AIRE", "ENFRIADOR DE AIRE", "CLIMATIZADOR",
+        "ABANICO", "VENTILADOR", "EXTRACTOR DE AIRE"
+    ]
+    if any(k in text for k in ac_keywords) or re.search(r"\b(AP-\d+CW|AS-\d+|AU-\d+|VM\d+C|VR\d+|S4-W|US-W)\b", text):
+        return "Climatización (A/C)"
+
+    # 3. Línea Blanca
+    lb_keywords = [
+        "REFRIGERAD", "LAVADORA", "SECADORA", "TORRE DE LAVADO", "CENTRO DE LAVADO",
+        "CARGA SUPERIOR", "CARGA FRONTAL", "CONGELADOR", "FREEZER", "MICROONDAS",
+        "MICROONDA", "ESTUFA", "COCINA", "QUEMADORES", "HORNO", "CAMPANA",
+        "EXTRACTOR DE GRASA", "DISPENSADOR", "GP-DISP", "OASIS", "ENFRIADOR",
+        "EXHIBIDOR", "MINI BAR", "MINIBAR", "FRIGOBAR", "LAVAVAJILLA", "ICE MAKER",
+        "FABRICADOR DE HIELO", "LICUADORA", "LICUADOR", "NUTRIBULLET", "MAGIC BULLET",
+        "CAFETERA", "PERCOLADORA", "TOSTADOR", "SANDWICHERA", "WAFFLERA", "WAFLERA",
+        "PLANCHA", "VAPORIZADOR", "FREIDORA", "AIR FRY", "OLLA", "ARROCERA",
+        "BATIDORA", "PROCESADOR DE ALIMENTO", "EXTRACTOR DE JUGO", "EXPRIMIDOR",
+        "ASPIRADORA", "HERVIDOR"
+    ]
+    if any(k in text for k in lb_keywords) or marca_u in ("G-PLUS", "NUTRI BULLET", "MAGIC BULLET"):
+        return "Línea Blanca"
+
+    # 4. Herramientas y Maquinaria
+    hm_keywords = [
+        "TALADRO", "ESMERIL", "SIERRA", "BOMBA", "HIDROLAVADORA", "HIDRONEUMATICO",
+        "DESBROZADORA", "CORTACESPED", "CORTAGRAMA", "CORTA GRAMA", "TRACTOR",
+        "PODADORA", "MOTOSIERRA", "MULTICUTTER", "MULTICUTTTER", "GENERADOR",
+        "COMPRESOR", "SOLDADOR", "MOTOBOMBA", "PULIDORA", "LIJADORA", "ROTOMARTILLO",
+        "DEMOLEDOR", "COMPACTADORA", "ALISADORA", "CANTEADORA", "CORTE RECTO DE CERAMICA",
+        "CARRETILLA", "PALLET JACK", "MULTIMETRO", "LOCALIZADOR DE CIRCUITOS",
+        "PISTOLA P/PINTAR", "PISTOLA DE CALOR", "SOPLADORA", "FUMIGADORA",
+        "ATORNILLADOR", "LLAVE DE IMPACTO", "CORTADORA", "CEPILLO ELECTRICO",
+        "ROUTER", "INGLETEADORA", "TRUPER", "PRETUL", "MAKITA", "DEWALT",
+        "MILWAUKEE", "STANLEY", "KARCHER", "AQUAPRO", "TORO"
+    ]
+    if any(k in text for k in hm_keywords) or marca_u in (
+        "TRUPER", "PRETUL", "MAKITA", "DEWALT", "MILWAUKEE", "STANLEY", "KARCHER",
+        "AQUAPRO", "TORO", "ING-CO", "INGCO", "BEST VALUE", "HYUNDAI", "STIHL",
+        "TROY BILT", "POULAN PRO", "MURRAY", "YARD MACHINE", "BRIGGS & STRATTON",
+        "DUCATI", "KLEIN", "DELTA", "WEBER", "RUBI", "GOODYEAR", "AMV", "WERNER"
+    ):
         return "Herramientas y Maquinaria"
-    if any(k in text for k in ["FORZA", "UPS", "PROTECTOR DE VOLTAJE", "REGULADOR", "BATERIA", "AVTEK", "INVERSOR"]):
+
+    # 5. Protección Eléctrica / UPS
+    pe_keywords = [
+        "UPS", "PROTECTOR DE VOLTAJE", "REGULADOR", "BATERIA", "INVERSOR", "SUPRESOR",
+        "ESTABILIZADOR", "CENTRO DE CARGA", "BREAKER", "DIMMER", "INTERRUPTOR",
+        "TOMACORRIENTE", "TOMA HEMBRA", "GFCI", "MULTITOMA", "EXTENSION ELECTRICA",
+        "TRANSFORMADOR", "REGLETA"
+    ]
+    if any(k in text for k in pe_keywords) or marca_u in ("FORZA", "AVTEK", "AVTECK", "EATON", "APC", "TRIPPLITE", "EAGLE", "VOLTECK", "LEVITON", "BTICINO"):
         return "Protección Eléctrica / UPS"
-    if any(k in text for k in ["CERRADURA", "YALE", "CERROJO", "CANDADO"]):
+
+    # 6. Cerrajería y Seguridad
+    cs_keywords = [
+        "CERRADURA", "CERRAD.", "CERROJO", "CANDADO", "CAJA FUERTE", "CAJA DE SEGURIDAD",
+        "CAMARA", "VIDEOPORTERO", "TIMBRE", "ALARMA", "SENSOR", "LLAVIN"
+    ]
+    if any(k in text for k in cs_keywords) or marca_u in ("YALE", "NEXXT", "RING", "SENTRY", "HERMEX", "PHILLIPS", "FANAL"):
         return "Cerrajería y Seguridad"
-    if any(k in text for k in ["DUCHA", "LORENZETTI", "FAME", "LAMPARA", "REFLECTOR", "TECNOLITE", "LLAVE", "GRIFO", "MONOMANDO"]):
+
+    # 7. Iluminación / Fontanería
+    if_keywords = [
+        "DUCHA", "TERMODUCHA", "CALENTADOR DE AGUA", "CALENTADOR DE PASO",
+        "CALENTADOR ELECTRICO", "CALENTADOR A GAS", "LAMPARA", "LUMINARIA",
+        "REFLECTOR", "BOMBILLO", "FOCO", "PANEL LED", "CINTA LED", "TUBO LED",
+        "LLAVE", "GRIFO", "MONOMANDO", "INODORO", "LAVAMANOS", "SANITARIO",
+        "VALVULA", "BANERA", "HIDROMASAJE", "PURIFICADOR DE AGUA", "TANQUE PARA AGUA",
+        "SECADOR DE MANO", "ESPEJO"
+    ]
+    if any(k in text for k in if_keywords) or marca_u in (
+        "LORENZETTI", "FAME", "TECNOLITE", "SYLVANIA", "ILUKON", "TITAN",
+        "TITAN PLUS", "THERMO MASTER", "THERMO SOLUTION", "ECO SMART", "ECOSMART",
+        "RHEEM", "FV", "PFISTER", "ASTRA", "FOSET", "GENEBRE", "AGD", "HUNTER"
+    ):
         return "Iluminación / Fontanería"
+
     return "Otras Categorías"
 
 def load_existing_json(filepath, var_name):
@@ -272,10 +360,11 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
                 # Indices específicos para seguimiento
                 validador_garantia_i = next((idx for k, idx in h.items() if "VALIDADOR DE GARANTI" in k or "VALIDACION DE GARANTIA" in k), 9)
                 boleta_rnn_i = next((idx for k, idx in h.items() if "BOLETA/RNN" in k or "BOLETA" in k or "RNN" in k), 26)
-                actividad_i = next((idx for k, idx in h.items() if "ACTIVIDAD" in k), 9)
+                actividad_i = next((idx for k, idx in h.items() if "ACTIVIDAD" in k), -1 if unidad.upper() == "CS" else 9)
                 externo_rnn_i = next((idx for k, idx in h.items() if "EXTERNO/RNN" in k or "EXTERNO" in k), 3)
 
                 # CS specific
+                cli_i = next((idx for k, idx in h.items() if "CLIENTE" in k or "NOMBRE" in k), -1)
                 npp_i = next((idx for k, idx in h.items() if k == "NPP" or "NPP" in k), 18)
                 mod_i = h.get('MODELO', -1)
                 ser_i = next((idx for k, idx in h.items() if "SERIE" in k), -1)
@@ -449,6 +538,13 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
                         
                     # ----------------- REPORTE DE GARANTIAS POR MARCA -----------------
                     cli = safe_str(row[cli_i] if cli_i >= 0 and cli_i < len(row) else '')
+                    act_raw = safe_str(row[actividad_i] if actividad_i >= 0 and actividad_i < len(row) else '')
+                    act_norm = clean_text(act_raw)
+                    tipo_norm = clean_text(tipo)
+                    val_raw = safe_str(row[validador_garantia_i] if validador_garantia_i >= 0 and validador_garantia_i < len(row) else '')
+                    val_norm = clean_text(val_raw)
+                    boleta_val = safe_str(row[boleta_rnn_i] if unidad.upper() == 'CS' and boleta_rnn_i >= 0 and boleta_rnn_i < len(row) else (row[externo_rnn_i] if unidad.upper() != 'CS' and externo_rnn_i >= 0 and externo_rnn_i < len(row) else ''))
+
                     if unidad.upper() == 'CS':
                         npp_val = safe_str(row[npp_i] if npp_i >= 0 and npp_i < len(row) else '')
                         mod_val = safe_str(row[mod_i] if mod_i >= 0 and mod_i < len(row) else '')
@@ -460,7 +556,7 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
                             modelo_rep = mod_val
                         else:
                             modelo_rep = rms
-                        desc_rep = desc
+                        desc_rep = desc if is_valid_desc(desc) else (act_raw if is_valid_desc(act_raw) else desc)
                     else:
                         mod_e = safe_str(row[mod_e_i] if mod_e_i >= 0 and mod_e_i < len(row) else '')
                         mod_c = safe_str(row[mod_c_i] if mod_c_i >= 0 and mod_c_i < len(row) else '')
@@ -468,8 +564,8 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
                         ser_c = safe_str(row[ser_c_i] if ser_c_i >= 0 and ser_c_i < len(row) else '')
                         desc_e = safe_str(row[desc_e_i] if desc_e_i >= 0 and desc_e_i < len(row) else '')
                         desc_c = safe_str(row[desc_c_i] if desc_c_i >= 0 and desc_c_i < len(row) else '')
-                        desc_list = [d for d in (desc_e, desc_c) if d and d not in ('--', '0')]
-                        desc_rep = " / ".join(desc_list) if desc_list else (desc or actividad_val)
+                        desc_list = [d for d in (desc_e, desc_c) if is_valid_desc(d)]
+                        desc_rep = " / ".join(desc_list) if desc_list else (act_raw if is_valid_desc(act_raw) else desc)
                         # En Maestros, Col V (modelo evaporador) es la columna oficial para modelo
                         mod_list = [m for m in (mod_e, mod_c) if m and m not in ('--', '0', 'N/A', 'None')]
                         modelo_rep = " / ".join(mod_list) if mod_list else rms
@@ -477,19 +573,19 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
                         ser = " / ".join(ser_list)
 
                     # REGLA 1: Excluir servicios (solo garantías)
-                    if "SERVICIO" in tipo and "GARANTIA" not in tipo:
+                    if "SERVICIO" in tipo_norm and "GARANTIA" not in tipo_norm:
                         continue
-                    if any(x in actividad_val for x in ["INSTALACION", "VISITA FUTURA INST", "MANTENIMIENTO", "DESINSTALACION"]):
+                    if any(x in act_norm for x in ["INSTALACION", "VISITA FUTURA INST", "MANTENIMIENTO", "DESINSTALACION", "REINSTALACION"]):
                         continue
-                    if tipo in ["ARMADO Y PRUEBA", "TRASFERENCIA VIA SISTEMA", "MANTO POSTVENTA"]:
+                    if tipo_norm in ["ARMADO Y PRUEBA", "TRASFERENCIA VIA SISTEMA", "MANTO POSTVENTA"]:
                         continue
 
                     is_warranty = False
                     if unidad.upper() == 'CS':
-                        if "GARANTIA" in tipo or "DENTRO" in validador_garantia_val or tipo in ["TRABAJANDO CORRECTAMENTE", "ACTIVO", "INV TIENDA"]:
+                        if "GARANTIA" in tipo_norm or "DENTRO" in val_norm or tipo_norm in ["TRABAJANDO CORRECTAMENTE", "ACTIVO", "INV TIENDA"]:
                             is_warranty = True
                     else:
-                        if "RECLAMO" in actividad_val or "GARANTIA" in tipo or "ASUME TIENDA" in tipo:
+                        if "RECLAMO" in act_norm or "GARANTIA" in tipo_norm or "ASUME TIENDA" in tipo_norm:
                             is_warranty = True
 
                     if not is_warranty:
@@ -513,7 +609,7 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
                             no_caso = mrnn.group(0).upper()
 
                     # Categoría y Tiempos de Respuesta
-                    categoria = classify_category(desc_rep, marca, actividad_val)
+                    categoria = classify_category(desc_rep, marca, act_raw, modelo_rep)
                     estatus_val = safe_str(row[estatus_i] if estatus_i >= 0 and estatus_i < len(row) else None).upper()
                     
                     dt_i = parse_dt(fecha)
@@ -550,7 +646,7 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
                             "anio": int(anio),
                             "mes": mes,
                             "mesNum": int(mes_num),
-                            "tipo_garantia": tipo if tipo else (validador_garantia_val if unidad.upper() == 'CS' else actividad_val),
+                            "tipo_garantia": tipo if tipo else (val_raw.upper() if unidad.upper() == 'CS' else act_raw.upper()),
                             "categoria": categoria,
                             "estatus": estatus_val,
                             "fecha_diagnostico": fd_raw if isinstance(fd_raw, str) else "",
