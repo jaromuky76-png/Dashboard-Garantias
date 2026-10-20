@@ -258,25 +258,29 @@ def scan_stored_files():
     
     for root, dirs, files in os.walk(folder_ot):
         for fl in sorted(files):
-            if (fl.endswith(".xlsx") or fl.endswith(".xls")) and not fl.startswith("~"):
+            if (fl.endswith(".xlsx") or fl.endswith(".xls")) and not fl.startswith("~") and "TABLA OFERTA" not in fl.upper():
                 path = os.path.join(root, fl)
                 try:
+                    rel_path = os.path.relpath(root, folder_ot)
+                    parts = rel_path.split(os.sep)
+                    if len(parts) < 3:
+                        continue
+                    
+                    unidad = parts[0].upper()
+                    anio = parts[1]
+                    mes = parts[2].upper()
+                    if unidad not in ("CS", "MAESTROS"):
+                        continue
+
                     file_stat = os.stat(path)
                     mod_time = datetime.datetime.fromtimestamp(file_stat.st_mtime).strftime('%Y-%m-%d %H:%M')
                     file_size_kb = round(file_stat.st_size / 1024, 1)
                     
-                    rel_path = os.path.relpath(root, folder_ot)
-                    parts = rel_path.split(os.sep)
-                    
-                    unidad = parts[0] if len(parts) > 0 else 'UNKNOWN'
-                    anio = parts[1] if len(parts) > 1 else 'UNKNOWN'
-                    mes = parts[2] if len(parts) > 2 else 'UNKNOWN'
-                    
                     file_registry.append({
                         "nombre": fl,
-                        "unidad": unidad.upper(),
+                        "unidad": unidad,
                         "anio": anio,
-                        "mes": mes.upper(),
+                        "mes": mes,
                         "tamano_kb": file_size_kb,
                         "modificado": mod_time
                     })
@@ -403,15 +407,10 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
                         "ot": ot_n, "unidad_negocio": unidad.upper()
                     }
                     
-                    # Garantias y Servicios (tabs Garantias/Servicios)
-                    if tipo:
-                        if "GARANTIA" in tipo:
-                            norm = "GARANTIA TOTAL" if "TOTAL" in tipo else "GARANTIA PARCIAL"
-                            garantia_data.append({**base, "tipoGarantia": norm})
-                            cnt_g += 1
-                        elif "SERVICIO" in tipo:
-                            servicio_data.append(base)
-                            cnt_s += 1
+                    # Servicios (tab Servicios)
+                    if tipo and "SERVICIO" in tipo and "GARANTIA" not in tipo:
+                        servicio_data.append(base)
+                        cnt_s += 1
 
                     # ----------------- SEGUIMIENTO DE TRAMITES -----------------
                     es_seguimiento = False
@@ -633,6 +632,23 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
                                 dias_cierre = round(f_val, 1)
 
                     if ot_n and marca and marca != "DESCONOCIDA":
+                        norm_gar = "GARANTIA TOTAL" if "TOTAL" in tipo_norm else "GARANTIA PARCIAL"
+                        rms_gar = rms if (rms and rms not in ("N/A", "--", "0")) else (modelo_rep if modelo_rep else "N/A")
+                        garantia_data.append({
+                            "marca": marca,
+                            "rms": rms_gar,
+                            "descripcion": desc_rep,
+                            "modelo": modelo_rep,
+                            "categoria": categoria,
+                            "fecha": fecha,
+                            "anio": int(anio),
+                            "mes": mes,
+                            "mesNum": int(mes_num),
+                            "ot": ot_n,
+                            "unidad_negocio": unidad.upper(),
+                            "tipoGarantia": norm_gar
+                        })
+                        cnt_g += 1
                         reportes_data.append({
                             "ot": ot_n,
                             "marca": marca,

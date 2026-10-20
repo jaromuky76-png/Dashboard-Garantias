@@ -8,6 +8,10 @@ let currentBrandTableFilter = 'ALL';
 // DOM Elements
 const dropArea = document.getElementById('drop-area');
 const fileInput = document.getElementById('file-input');
+const fileInputCs = document.getElementById('file-input-cs');
+const fileInputMaestros = document.getElementById('file-input-maestros');
+const btnUploadCs = document.getElementById('btn-upload-cs');
+const btnUploadMaestros = document.getElementById('btn-upload-maestros');
 const btnFolder = document.getElementById('btn-folder');
 const folderInput = document.getElementById('folder-input');
 const loadingIndicator = document.getElementById('loading');
@@ -16,46 +20,75 @@ const searchInput = document.getElementById('search-input');
 // Initialize Events
 function initEvents() {
     // Basic Drag & Drop
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropArea.addEventListener(eventName, preventDefaults, false);
-    });
+    if (dropArea) {
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+        });
 
-    ['dragenter', 'dragover'].forEach(eventName => {
-        dropArea.addEventListener(eventName, () => dropArea.classList.add('dragover'), false);
-    });
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, () => dropArea.classList.add('dragover'), false);
+        });
 
-    ['dragleave', 'drop'].forEach(eventName => {
-        dropArea.addEventListener(eventName, () => dropArea.classList.remove('dragover'), false);
-    });
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, () => dropArea.classList.remove('dragover'), false);
+        });
 
-    dropArea.addEventListener('drop', handleDrop, false);
-    fileInput.addEventListener('change', handleFilesSelect, false);
+        dropArea.addEventListener('drop', handleDrop, false);
+    }
+
+    if (fileInput) fileInput.addEventListener('change', handleFilesSelect, false);
+
+    // Direct upload buttons for CS and MAESTROS
+    if (btnUploadCs && fileInputCs) {
+        btnUploadCs.addEventListener('click', () => fileInputCs.click());
+        fileInputCs.addEventListener('change', (e) => {
+            const excelFiles = Array.from(e.target.files).filter(f => f.name.toLowerCase().endsWith('.xlsx') || f.name.toLowerCase().endsWith('.xls'));
+            if (excelFiles.length > 0) {
+                processFiles(excelFiles, 'CS');
+            }
+        });
+    }
+
+    if (btnUploadMaestros && fileInputMaestros) {
+        btnUploadMaestros.addEventListener('click', () => fileInputMaestros.click());
+        fileInputMaestros.addEventListener('change', (e) => {
+            const excelFiles = Array.from(e.target.files).filter(f => f.name.toLowerCase().endsWith('.xlsx') || f.name.toLowerCase().endsWith('.xls'));
+            if (excelFiles.length > 0) {
+                processFiles(excelFiles, 'MAESTROS');
+            }
+        });
+    }
     
     // Folder Selection button proxy
-    btnFolder.addEventListener('click', () => {
-        folderInput.click();
-    });
-    folderInput.addEventListener('change', handleFilesSelect, false);
+    if (btnFolder && folderInput) {
+        btnFolder.addEventListener('click', () => {
+            folderInput.click();
+        });
+        folderInput.addEventListener('change', handleFilesSelect, false);
+    }
 
     // Search input
-    searchInput.addEventListener('input', () => {
-        renderTable();
-    });
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            renderTable();
+        });
+    }
 
     // Table brand filter
-    document.getElementById('table-brand-filter').addEventListener('change', (e) => {
+    document.getElementById('table-brand-filter')?.addEventListener('change', (e) => {
         currentBrandTableFilter = e.target.value;
         renderTable();
     });
 
     // Alert filter
-    document.getElementById('brand-alert-filter').addEventListener('change', (e) => {
+    document.getElementById('brand-alert-filter')?.addEventListener('change', (e) => {
         renderWorstProductsList(e.target.value);
     });
 
     // Comparator selectors
-    document.getElementById('compare-brand-a').addEventListener('change', updateComparator);
-    document.getElementById('compare-brand-b').addEventListener('change', updateComparator);
+    document.getElementById('compare-brand-a')?.addEventListener('change', updateComparator);
+    document.getElementById('compare-brand-b')?.addEventListener('change', updateComparator);
+
     // Modal handlers
     document.getElementById('btn-unit-cs')?.addEventListener('click', () => {
         document.getElementById('unit-modal').classList.add('hidden');
@@ -68,8 +101,8 @@ function initEvents() {
     document.getElementById('btn-unit-cancel')?.addEventListener('click', () => {
         document.getElementById('unit-modal').classList.add('hidden');
         pendingUploadFiles = [];
-        fileInput.value = '';
-        folderInput.value = '';
+        if (fileInput) fileInput.value = '';
+        if (folderInput) folderInput.value = '';
     });
 }
 
@@ -87,8 +120,12 @@ function promptUnitSelection(files) {
         return;
     }
     pendingUploadFiles = excelFiles;
+
+    const preview = document.getElementById('unit-modal-file-preview');
+    if (preview) {
+        preview.innerHTML = excelFiles.map(f => `• ${f.name}`).join('<br>');
+    }
     
-    // Si no existe el modal en esta página, solo enviamos como CS por defecto
     const modal = document.getElementById('unit-modal');
     if(modal) {
         modal.classList.remove('hidden');
@@ -108,22 +145,18 @@ function handleFilesSelect(e) {
 
 // Data Processing
 async function processFiles(excelFiles, unidad) {
-
     loadingIndicator.classList.remove('hidden');
-    dropArea.classList.add('processing');
+    if (dropArea) dropArea.classList.add('processing');
     
-    // Cambiamos el texto para indicar procesamiento remoto
-    const loadingText = loadingIndicator.querySelector('p');
-    if(loadingText) loadingText.innerText = "Subiendo archivo y procesando datos... esto puede tardar un par de minutos.";
+    const loadingText = loadingIndicator.querySelector('p') || loadingIndicator.querySelector('span');
+    if(loadingText) loadingText.innerText = `Subiendo ${excelFiles.length} archivo(s) a Unidad ${unidad} y procesando datos...`;
 
     try {
         for (let file of excelFiles) {
             await uploadFileWithRetry(file, false, unidad);
         }
         
-        // Iniciar polling de estado
-        const loadingText = loadingIndicator.querySelector('p') || loadingIndicator.querySelector('span');
-        if(loadingText) loadingText.innerText = "Consolidando todos los archivos... Esto toma entre 1 y 5 minutos. Por favor no cierre la página.";
+        if(loadingText) loadingText.innerText = `Consolidando datos de Unidad ${unidad} en todos los módulos... Por favor espere unos segundos.`;
         
         const pollStatus = setInterval(async () => {
             try {
@@ -135,18 +168,19 @@ async function processFiles(excelFiles, unidad) {
                 }
             } catch(e) {
                 console.error("Error polling status:", e);
-                // Si el servidor se apaga, dejamos de intentar
             }
-        }, 5000);
+        }, 3000);
         
     } catch(error) {
         console.error("Error al subir archivos:", error);
         alert("Hubo un error subiendo el archivo: " + error.message);
         
         loadingIndicator.classList.add('hidden');
-        dropArea.classList.remove('processing');
-        fileInput.value = '';
-        folderInput.value = '';
+        if (dropArea) dropArea.classList.remove('processing');
+        if (fileInput) fileInput.value = '';
+        if (fileInputCs) fileInputCs.value = '';
+        if (fileInputMaestros) fileInputMaestros.value = '';
+        if (folderInput) folderInput.value = '';
     }
 }
 
@@ -156,19 +190,16 @@ async function uploadFileWithRetry(file, overwrite = false, unidad = 'CS', anioO
     formData.append('overwrite', overwrite);
     formData.append('unidad_negocio', unidad);
     
-    // Detectar mes del nombre del archivo en el cliente (evita carga pesada en servidor)
     const MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO',
                    'JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
     const nameUpper = file.name.toUpperCase();
     
-    // Año: primero buscar en el nombre, luego usar el actual
     let anio = anioOverride;
     if (!anio) {
         const yearMatch = nameUpper.match(/(20\d{2})/);
         anio = yearMatch ? yearMatch[1] : String(new Date().getFullYear());
     }
     
-    // Mes: buscar en el nombre del archivo
     let mes = mesOverride;
     if (!mes) {
         mes = MESES.find(m => nameUpper.includes(m)) || null;
@@ -200,93 +231,17 @@ async function uploadFileWithRetry(file, overwrite = false, unidad = 'CS', anioO
     return await response.json();
 }
 
-function readExcelFile(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        
-        reader.onload = (e) => {
-            try {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-                
-                // Intentar encontrar la hoja que se llama 'OT' o 'ESTADO DE OT'
-                let targetSheetName = workbook.SheetNames.find(n => n.trim().toUpperCase() === 'OT' || n.trim().toUpperCase() === 'ESTADO DE OT');
-                
-                // Si no existe, usamos la primera hoja por defecto
-                if (!targetSheetName) {
-                    targetSheetName = workbook.SheetNames[0]; 
-                }
-                
-                const worksheet = workbook.Sheets[targetSheetName];
-                
-                // Convertir a formato de array 2D para buscar en qué fila están realmente los encabezados
-                const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null });
-                
-                let headerRowIndex = -1;
-                let headers = [];
-                for(let i=0; i<Math.min(20, rawData.length); i++) {
-                    const row = rawData[i];
-                    if(row && (row.includes('TIPO DE GARANTIA') || row.includes('MARCA') || row.includes('RMS'))) {
-                        headerRowIndex = i;
-                        headers = row;
-                        break;
-                    }
-                }
-                
-                let jsonData = [];
-                if(headerRowIndex !== -1) {
-                    // Mapeamos los datos manualmente a objetos JSON usando los headers encontrados
-                    for(let i = headerRowIndex + 1; i < rawData.length; i++) {
-                        let rowObj = {};
-                        for(let j=0; j < headers.length; j++) {
-                            if(headers[j]) {
-                                rowObj[headers[j]] = rawData[i][j];
-                            }
-                        }
-                        jsonData.push(rowObj);
-                    }
-                } else {
-                    // Si no encuentra el texto, asume la fila 3 (índice 2) como plan B
-                    jsonData = XLSX.utils.sheet_to_json(worksheet, { range: 2, defval: null });
-                }
-                
-                // Process the data
-                const processed = [];
-                for(let row of jsonData) {
-                    const tipoGarantia = String(row['TIPO DE GARANTIA'] || '').toUpperCase().trim();
-                    
-                    if(tipoGarantia.includes('GARANTIA PARCIAL') || tipoGarantia.includes('GARANTIA TOTAL')) {
-                        // Ajustamos la verificación para considerar si dice GARANTIA PARCIAL o GARANTIA TOTAL incluso con espacios o pequeñas variaciones
-                        const normalizedGarantia = tipoGarantia.includes('TOTAL') ? 'GARANTIA TOTAL' : 'GARANTIA PARCIAL';
-                        
-                        processed.push({
-                            marca: String(row['MARCA'] || 'Desconocida').trim().toUpperCase(),
-                            rms: String(row['RMS'] || 'N/A').trim(),
-                            descripcion: String(row['DESCRIPCION DEL EQUIPO'] || '').trim(),
-                            tipoGarantia: normalizedGarantia
-                        });
-                    }
-                }
-                resolve(processed);
-            } catch(err) {
-                reject(err);
-            }
-        };
-        
-        reader.onerror = reject;
-        reader.readAsArrayBuffer(file);
-    });
-}
-
 // Dashboard Update Logic
 function applyGlobalFilter() {
-    const yearSel = document.getElementById('filter-year').value;
-    const monthSel = document.getElementById('filter-month').value;
+    const unitSel = document.getElementById('filter-unit')?.value || 'ALL';
+    const yearSel = document.getElementById('filter-year')?.value || 'ALL';
+    const monthSel = document.getElementById('filter-month')?.value || 'ALL';
     
     window.filteredGlobalData = globalData.filter(d => {
-        const matchYear = yearSel === 'ALL' || d.anio == yearSel;
-        const matchMonth = monthSel === 'ALL' || d.mesNum == monthSel;
-        return matchYear && matchMonth;
+        const matchUnit = unitSel === 'ALL' || (d.unidad_negocio || 'CS').toUpperCase() === unitSel;
+        const matchYear = yearSel === 'ALL' || String(d.anio) === String(yearSel);
+        const matchMonth = monthSel === 'ALL' || String(d.mesNum) === String(monthSel);
+        return matchUnit && matchYear && matchMonth;
     });
     
     updateDashboard();
@@ -294,29 +249,75 @@ function applyGlobalFilter() {
 
 function updateDashboard() {
     const dataToUse = window.filteredGlobalData || globalData;
+    const unitSel = document.getElementById('filter-unit')?.value || 'ALL';
+    const yearSel = document.getElementById('filter-year')?.value || 'ALL';
+    const monthSel = document.getElementById('filter-month')?.value || 'ALL';
     
     // KPIs
     const totalParciales = dataToUse.filter(d => d.tipoGarantia === 'GARANTIA PARCIAL').length;
     const totalTotales = dataToUse.filter(d => d.tipoGarantia === 'GARANTIA TOTAL').length;
     const totalGeneral = dataToUse.length;
     
-    // Using simple logic to avoid reading the file again for row count. We just show total "warranties" found.
-    // To show "Total OTs Evaluadas" we could ideally need the un-filtered count, but since we filtered early to save RAM,
-    // we'll rename the KPI to reflect filtered totals. Wait, I'll update the text in UI via JS.
-    document.getElementById('kpi-rows').parentElement.querySelector('h3').innerText = "Total Reclamos de Garantía";
+    const csRowsCount = dataToUse.filter(d => (d.unidad_negocio || 'CS').toUpperCase() === 'CS').length;
+    const maestrosRowsCount = dataToUse.filter(d => (d.unidad_negocio || '').toUpperCase() === 'MAESTROS').length;
 
-    document.getElementById('kpi-files').innerText = globalData.length > 0 ? "Actualizado" : "0";
+    // Archivos procesados dinámicos según filtro
+    const meta = window.PRELOADED_META;
+    const listaArchivos = (meta && meta.listaArchivos) ? meta.listaArchivos : [];
+    const monthNamesUpper = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
+
+    if (listaArchivos.length > 0) {
+        const totalCsFiles = listaArchivos.filter(f => f.unidad === 'CS').length;
+        const totalMaestrosFiles = listaArchivos.filter(f => f.unidad === 'MAESTROS').length;
+        const badgeText = document.getElementById('coverage-badge-text');
+        if (badgeText) {
+            badgeText.textContent = `${listaArchivos.length} archivos activos (${totalCsFiles} CS · ${totalMaestrosFiles} MAESTROS)`;
+        }
+
+        const filteredFiles = listaArchivos.filter(f => {
+            const mUnit = unitSel === 'ALL' || f.unidad === unitSel;
+            const mYear = yearSel === 'ALL' || String(f.anio) === String(yearSel);
+            const mMonth = monthSel === 'ALL' || f.mes === monthNamesUpper[parseInt(monthSel) - 1];
+            return mUnit && mYear && mMonth;
+        });
+        const fCs = filteredFiles.filter(f => f.unidad === 'CS').length;
+        const fMaestros = filteredFiles.filter(f => f.unidad === 'MAESTROS').length;
+
+        document.getElementById('kpi-files').innerText = `${filteredFiles.length} archivos`;
+        const filesSub = document.getElementById('kpi-files-sub');
+        if (filesSub) {
+            filesSub.innerText = `${fCs} de CS · ${fMaestros} de MAESTROS`;
+        }
+    } else {
+        const periods = new Set(dataToUse.map(d => `${d.unidad_negocio}-${d.anio}-${d.mes}`));
+        document.getElementById('kpi-files').innerText = `${periods.size} archivos`;
+    }
+
     document.getElementById('kpi-rows').innerText = totalGeneral.toLocaleString();
+    const rowsSub = document.getElementById('kpi-rows-sub');
+    if (rowsSub) {
+        rowsSub.innerText = `${csRowsCount.toLocaleString()} CS · ${maestrosRowsCount.toLocaleString()} MAESTROS`;
+    }
+
     document.getElementById('kpi-parcial').innerText = totalParciales.toLocaleString();
+    const parcialSub = document.getElementById('kpi-parcial-sub');
+    if (parcialSub) {
+        const pctP = totalGeneral > 0 ? ((totalParciales / totalGeneral) * 100).toFixed(1) : '0.0';
+        parcialSub.innerText = `${pctP}% del total de garantías`;
+    }
+
     document.getElementById('kpi-total').innerText = totalTotales.toLocaleString();
+    const totalSub = document.getElementById('kpi-total-sub');
+    if (totalSub) {
+        const pctT = totalGeneral > 0 ? ((totalTotales / totalGeneral) * 100).toFixed(1) : '0.0';
+        totalSub.innerText = `${pctT}% del total de garantías`;
+    }
 
     // Data Aggregation
-    // Agrupar por marca
     const byBrand = {};
     const byProduct = {};
 
     dataToUse.forEach(item => {
-        // Por marca
         if(!byBrand[item.marca]) {
             byBrand[item.marca] = { parcial: 0, total: 0, sum: 0 };
         }
@@ -324,7 +325,6 @@ function updateDashboard() {
         else if(item.tipoGarantia === 'GARANTIA TOTAL') byBrand[item.marca].total++;
         byBrand[item.marca].sum++;
 
-        // Por producto
         const pKey = `${item.marca}___${item.rms}___${item.descripcion}`;
         if(!byProduct[pKey]) {
             byProduct[pKey] = {
@@ -343,20 +343,25 @@ function updateDashboard() {
         byProduct[pKey].sum++;
         
         const otNumber = item.ot || 'S/N';
-        if (!byProduct[pKey].ots.has(otNumber)) {
-            byProduct[pKey].ots.add(otNumber);
-            byProduct[pKey].otDetails.push({ ot: otNumber, fecha: item.fecha || 'N/A' });
+        const uNeg = (item.unidad_negocio || 'CS').toUpperCase();
+        const otKey = `${uNeg}-${otNumber}`;
+        if (!byProduct[pKey].ots.has(otKey)) {
+            byProduct[pKey].ots.add(otKey);
+            byProduct[pKey].otDetails.push({
+                ot: otNumber,
+                fecha: item.fecha || 'N/A',
+                unidad: uNeg
+            });
         }
     });
 
     renderChart(byBrand);
     
-    // Store data globally
     window.byBrand = byBrand;
     window.aggregatedProducts = Object.values(byProduct).sort((a,b) => b.sum - a.sum);
     
     populateSelectors();
-    renderWorstProductsList('ALL');
+    renderWorstProductsList(document.getElementById('brand-alert-filter')?.value || 'ALL');
     renderTable();
 }
 
@@ -367,13 +372,11 @@ function populateSelectors() {
     const compB          = document.getElementById('compare-brand-b');
     const tableBrandSel  = document.getElementById('table-brand-filter');
 
-    // Save current values to restore them if they exist
     const selectedFilter = alertFilter.value;
     const selectedA      = compA.value;
     const selectedB      = compB.value;
     const selectedTable  = tableBrandSel.value;
 
-    // Clear and refill selectors
     const brandOptions = brands.map(b => `<option value="${b}">${b}</option>`).join('');
     
     alertFilter.innerHTML   = '<option value="ALL">Todas las Marcas</option>' + brandOptions;
@@ -381,46 +384,47 @@ function populateSelectors() {
     compA.innerHTML = '<option value="">Seleccione Marca A</option>' + brandOptions;
     compB.innerHTML = '<option value="">Seleccione Marca B</option>' + brandOptions;
 
-    // Restore selections
     alertFilter.value  = brands.includes(selectedFilter) ? selectedFilter : 'ALL';
     tableBrandSel.value = brands.includes(selectedTable) ? selectedTable : 'ALL';
     compA.value = brands.includes(selectedA) ? selectedA : '';
     compB.value = brands.includes(selectedB) ? selectedB : '';
 
-    // Inicializar selectores de año y mes de forma dinámica
     updatePeriodDropdowns();
 }
 
 function updatePeriodDropdowns() {
+    const unitSel = document.getElementById('filter-unit');
     const yearSel = document.getElementById('filter-year');
     const monthSel = document.getElementById('filter-month');
     if(!yearSel || !monthSel) return;
 
+    const selectedUnit = unitSel ? unitSel.value : 'ALL';
     const selectedYear = yearSel.value;
     const selectedMonth = monthSel.value;
 
-    // Calcular años disponibles
-    const years = [...new Set(globalData.map(d => d.anio).filter(y => y))].sort();
+    const unitFilteredData = (selectedUnit === 'ALL')
+        ? globalData
+        : globalData.filter(d => (d.unidad_negocio || 'CS').toUpperCase() === selectedUnit);
+
+    const years = [...new Set(unitFilteredData.map(d => d.anio).filter(y => y))].sort();
     
-    // Rellenar años solo si no se ha rellenado
-    if(yearSel.options.length <= 1 && years.length > 0) {
-        yearSel.innerHTML = '<option value="ALL">Todos los Años</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
-        yearSel.value = selectedYear || 'ALL';
+    yearSel.innerHTML = '<option value="ALL">Todos los Años</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
+    if (years.map(String).includes(String(selectedYear))) {
+        yearSel.value = selectedYear;
+    } else {
+        yearSel.value = 'ALL';
     }
 
-    // Calcular meses disponibles basados en el año seleccionado (si aplica)
-    const availableData = (yearSel.value === 'ALL') ? globalData : globalData.filter(d => d.anio == yearSel.value);
+    const availableData = (yearSel.value === 'ALL') ? unitFilteredData : unitFilteredData.filter(d => String(d.anio) === String(yearSel.value));
     const monthsSet = new Set(availableData.map(d => parseInt(d.mesNum)).filter(m => !isNaN(m)));
     const availableMonths = [...monthsSet].sort((a,b) => a - b);
 
     const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     
-    // Regenerar meses siempre para que se adapte al año seleccionado
     monthSel.innerHTML = '<option value="ALL">Todos los Meses</option>' + availableMonths.map(mNum => {
         return `<option value="${mNum}">${monthNames[mNum - 1]}</option>`;
     }).join('');
 
-    // Restaurar selección si aún es válida, si no 'ALL'
     if(availableMonths.includes(parseInt(selectedMonth))) {
         monthSel.value = selectedMonth;
     } else {
@@ -429,6 +433,10 @@ function updatePeriodDropdowns() {
 }
 
 // Global Filter Logic setup
+document.getElementById('filter-unit')?.addEventListener('change', () => {
+    updatePeriodDropdowns();
+    applyGlobalFilter();
+});
 document.getElementById('filter-year')?.addEventListener('change', () => {
     updatePeriodDropdowns();
     applyGlobalFilter();
@@ -437,10 +445,7 @@ document.getElementById('filter-month')?.addEventListener('change', applyGlobalF
 document.getElementById('btn-apply-filter')?.addEventListener('click', applyGlobalFilter);
 
 function renderChart(brandData) {
-    // Sort brands by total warranties
     const sortedBrands = Object.entries(brandData).sort((a, b) => b[1].sum - a[1].sum);
-    
-    // We'll take top 15 max for chart readability
     const topBrands = sortedBrands.slice(0, 15);
     
     const labels = topBrands.map(b => b[0]);
@@ -466,7 +471,7 @@ function renderChart(brandData) {
                 {
                     label: 'Garantía Total',
                     data: dTotal,
-                    backgroundColor: 'rgba(239, 68, 68, 0.85)', // red-500
+                    backgroundColor: 'rgba(239, 68, 68, 0.85)',
                     borderColor: 'rgb(239, 68, 68)',
                     borderRadius: 4,
                     borderWidth: 1
@@ -474,7 +479,7 @@ function renderChart(brandData) {
                 {
                     label: 'Garantía Parcial',
                     data: dParcial,
-                    backgroundColor: 'rgba(245, 158, 11, 0.85)', // amber-500
+                    backgroundColor: 'rgba(245, 158, 11, 0.85)',
                     borderColor: 'rgb(245, 158, 11)',
                     borderRadius: 4,
                     borderWidth: 1
@@ -550,7 +555,7 @@ function renderWorstProductsList(filterBrand) {
                         <span class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">${p.marca}</span>
                         <span class="text-[10px] font-mono text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900/60 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 font-semibold">${p.rms}</span>
                     </div>
-                    <p class="text-xs font-bold text-slate-800 dark:text-slate-100 truncate" title="${p.descripcion}">${p.descripcion}</p>
+                    <p class="text-xs font-bold text-slate-800 dark:text-slate-100 truncate" title="${p.descripcion}">${p.descripcion || 'Sin descripción'}</p>
                 </div>
                 <div class="flex-shrink-0 text-right pl-2">
                     <p class="text-sm font-black text-slate-900 dark:text-white leading-none">${p.sum}</p>
@@ -623,7 +628,7 @@ function renderComparatorCard(containerId, brandName) {
                     <p class="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold">Producto con Mayor Incidencia</p>
                     <span class="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">RMS: ${topProduct.rms}</span>
                 </div>
-                <p class="text-slate-900 dark:text-white font-bold text-sm mb-1 truncate" title="${topProduct.descripcion}">${topProduct.descripcion}</p>
+                <p class="text-slate-900 dark:text-white font-bold text-sm mb-1 truncate" title="${topProduct.descripcion}">${topProduct.descripcion || 'Sin descripción'}</p>
                 <div class="mt-2 flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-800">
                     <span class="text-[10px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900/40 px-2 py-0.5 rounded-md font-bold">Alerta Crítica</span>
                     <span class="text-xs font-black text-slate-900 dark:text-white">${topProduct.sum} Fallos</span>
@@ -634,36 +639,43 @@ function renderComparatorCard(containerId, brandName) {
     `;
 }
 
+function formatDateShort(fechaStr) {
+    if (!fechaStr) return 'N/A';
+    const raw = String(fechaStr).split(' ')[0];
+    const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+    return raw;
+}
+
 function renderTable() {
-    const query  = searchInput.value.toLowerCase();
+    const query  = searchInput ? searchInput.value.toLowerCase() : '';
     const tbody  = document.getElementById('table-body');
     const rowCountEl = document.getElementById('table-row-count');
     
-    if(!window.aggregatedProducts || window.aggregatedProducts.length === 0) return;
+    if(!window.aggregatedProducts || window.aggregatedProducts.length === 0) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">No se encontraron registros para el filtro seleccionado.</td></tr>`;
+        return;
+    }
 
     let filtered = window.aggregatedProducts;
 
-    // Filtro por marca (dropdown)
     if(currentBrandTableFilter !== 'ALL') {
         filtered = filtered.filter(p => p.marca === currentBrandTableFilter);
     }
 
-    // Filtro por texto libre
     if(query) {
         filtered = filtered.filter(p => 
             p.marca.toLowerCase().includes(query) || 
             p.rms.toLowerCase().includes(query) ||
-            p.descripcion.toLowerCase().includes(query)
+            (p.descripcion || '').toLowerCase().includes(query)
         );
     }
 
-    // Guardar el filtrado actual para exportación
     window.currentFilteredProducts = filtered;
 
     const totalFiltered = filtered.length;
     const displayCount  = Math.min(totalFiltered, 200);
     
-    // Actualizar indicador de filas
     if(rowCountEl) {
         const brandLabel = currentBrandTableFilter !== 'ALL' ? ` · Marca: ${currentBrandTableFilter}` : '';
         rowCountEl.textContent = `Mostrando ${displayCount} de ${totalFiltered} productos${brandLabel}`;
@@ -673,17 +685,22 @@ function renderTable() {
     for(let i=0; i < displayCount; i++) {
         const item = filtered[i];
         
-        // Formatear las OTs de manera profesional, minimalista y compacta
         const MAX_VISIBLE_OTS = 2;
         const visibleOts = item.otDetails.slice(0, MAX_VISIBLE_OTS);
         const remainingCount = item.otDetails.length - MAX_VISIBLE_OTS;
         
-        let otDetailsDisplay = visibleOts.map(d => 
-            `<span class="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[11px] font-mono mr-1 mb-1 whitespace-nowrap">${d.fecha.split(' ')[0]}: <strong class="ml-1 text-slate-900 dark:text-white font-bold">${d.ot}</strong></span>`
-        ).join('');
+        let otDetailsDisplay = visibleOts.map(d => {
+            const unitColor = d.unidad === 'MAESTROS'
+                ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300'
+                : 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300';
+            return `<span class="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[11px] font-mono mr-1 mb-1 whitespace-nowrap">
+                <span class="px-1 rounded text-[9px] font-bold mr-1 ${unitColor}">${d.unidad === 'MAESTROS' ? 'M' : 'CS'}</span>
+                ${formatDateShort(d.fecha)}: <strong class="ml-1 text-slate-900 dark:text-white font-bold">${d.ot}</strong>
+            </span>`;
+        }).join('');
 
         if (remainingCount > 0) {
-            const fullListTooltip = item.otDetails.map(d => `${d.fecha.split(' ')[0]}: OT ${d.ot}`).join('&#10;');
+            const fullListTooltip = item.otDetails.map(d => `[${d.unidad}] ${formatDateShort(d.fecha)}: OT ${d.ot}`).join('&#10;');
             otDetailsDisplay += `<span class="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-[10px] font-bold cursor-help mb-1 whitespace-nowrap shadow-sm" title="${fullListTooltip}">+${remainingCount} más</span>`;
         }
 
@@ -691,7 +708,7 @@ function renderTable() {
             <tr class="hover:bg-blue-50/70 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-100 dark:border-slate-800/70 group">
                 <td class="font-bold text-slate-900 dark:text-white text-xs whitespace-nowrap">${item.marca}</td>
                 <td class="font-mono text-xs text-slate-600 dark:text-slate-400 font-semibold whitespace-nowrap">${item.rms}</td>
-                <td class="text-xs text-slate-700 dark:text-slate-300 max-w-xs truncate font-medium" title="${item.descripcion}">${item.descripcion}</td>
+                <td class="text-xs text-slate-700 dark:text-slate-300 max-w-xs truncate font-medium" title="${item.descripcion}">${item.descripcion || 'Sin descripción'}</td>
                 <td class="text-center"><span class="badge badge-parcial font-bold">${item.parcial}</span></td>
                 <td class="text-center"><span class="badge badge-total font-bold">${item.total}</span></td>
                 <td class="text-center font-black text-slate-900 dark:text-white text-sm">${item.sum}</td>
@@ -722,14 +739,12 @@ function exportFilteredToExcel() {
     const fecha = new Date().toISOString().slice(0,10);
     const filename = `Garantias_${brandLabel}_${fecha}.xlsx`;
 
-    // Construir filas con encabezados descriptivos
-    const rows = [['Marca', 'RMS', 'Descripción del Equipo', 'Garantía Parcial', 'Garantía Total', 'Total Reclamos', 'Mes y Nro. OT']];
+    const rows = [['Marca', 'RMS / Modelo', 'Descripción del Equipo', 'Garantía Parcial', 'Garantía Total', 'Total Reclamos', 'Unidad, Fecha y Nro. OT']];
     source.forEach(item => {
-        const otList = item.otDetails.map(d => `${d.fecha.split(' ')[0]}: ${d.ot}`);
+        const otList = item.otDetails.map(d => `[${d.unidad}] ${formatDateShort(d.fecha)}: ${d.ot}`);
         const pairs = [];
         for(let i=0; i<otList.length; i+=2) {
             if(i+1 < otList.length) {
-                // Alineación con espacios simulada para asemejarse al grid del dashboard
                 pairs.push(otList[i] + "        " + otList[i+1]);
             } else {
                 pairs.push(otList[i]);
@@ -741,14 +756,14 @@ function exportFilteredToExcel() {
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
 
-    // Ancho de columnas
     ws['!cols'] = [
-        { wch: 20 }, // Marca
-        { wch: 18 }, // RMS
-        { wch: 45 }, // Descripción
-        { wch: 18 }, // Parcial
-        { wch: 18 }, // Total
-        { wch: 16 }  // Total Reclamos
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 45 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 16 },
+        { wch: 48 }
     ];
 
     const wb = XLSX.utils.book_new();
@@ -760,27 +775,17 @@ function exportFilteredToExcel() {
 function startApp() {
     initEvents();
     
-    // Check if data is already loaded or arrives later
     const checkData = () => {
         if (window.PRELOADED_DATA && window.PRELOADED_DATA.length > 0) {
             console.log("Datos pre-cargados encontrados:", window.PRELOADED_DATA.length);
             globalData = window.PRELOADED_DATA;
             updateDashboard();
-
-            // Usar metadatos del script si están disponibles
-            const meta = window.PRELOADED_META;
-            if(meta) {
-                document.getElementById('kpi-files').innerText = `${meta.archivosProcessados} archivos`;
-            } else {
-                document.getElementById('kpi-files').innerText = "Actualizado";
-            }
             return true;
         }
         return false;
     };
 
     if (!checkData()) {
-        // Retry a few times in case of slow script loading
         let retries = 0;
         const interval = setInterval(() => {
             retries++;

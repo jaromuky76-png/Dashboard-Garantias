@@ -670,10 +670,10 @@
 
         filteredDetalleRecords.forEach(r => {
             const tg = (r.tipo_garantia || '').toUpperCase();
-            if (tg.includes('PARCIAL')) {
-                garParcialCount++;
-            } else {
+            if (tg.includes('TOTAL')) {
                 garTotalCount++;
+            } else {
+                garParcialCount++;
             }
 
             if (r.no_caso_marca && r.no_caso_marca.trim() !== '') {

@@ -106,7 +106,15 @@
         .dark .badge-maestros { color: #c084fc; }
         .badge-active { background: rgba(16, 185, 129, 0.12); color: #059669; border: 1px solid rgba(16, 185, 129, 0.25); }
         .dark .badge-active { color: #34d399; }
-        
+        .loader {
+            border: 4px solid rgba(99, 102, 241, 0.2);
+            border-left-color: #6366f1;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -126,12 +134,12 @@
                     <span class="text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300">
                         SILVA INTERNACIONAL S.A.
                     </span>
-                    <span class="text-xs text-slate-400 font-medium">• Centro de Garantías</span>
+                    <span class="text-xs text-slate-400 font-medium">• Centro de Garantías (CS &amp; MAESTROS)</span>
                 </div>
                 <h1 class="text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
                     Archivos de OTs Resguardados
                 </h1>
-                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Historial y estado de los archivos Excel evaluados en el sistema</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Control de actualización mensual por Unidad de Negocio (CS y MAESTROS)</p>
                 
                 <nav class="flex flex-wrap gap-2 text-xs font-semibold mt-4">
                     <a href="index.html" class="px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Garantías</a>
@@ -143,7 +151,7 @@
                 </nav>
             </div>
 
-            <div class="flex items-center gap-3">
+            <div class="flex flex-wrap items-center gap-2.5">
                 <!-- Segmented Selector de Tema -->
                 <div class="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 shadow-sm" role="group" aria-label="Selector de Tema">
                     <button type="button" onclick="setTheme('light')" id="btn-theme-light" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer" title="Activar Modo Claro">
@@ -159,26 +167,93 @@
                         <span>Oscuro</span>
                     </button>
                 </div>
+
+                <!-- Inputs ocultos para carga directa -->
+                <input type="file" id="file-input-cs" class="hidden" multiple accept=".xlsx, .xls">
+                <input type="file" id="file-input-maestros" class="hidden" multiple accept=".xlsx, .xls">
+
+                <!-- Botón Subir OT Centro de Servicios (CS) -->
+                <button type="button" onclick="document.getElementById('file-input-cs').click()" class="bg-blue-600 hover:bg-blue-500 active:scale-95 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-600/20 flex items-center gap-2 cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    <div class="text-left leading-tight">
+                        <div class="font-extrabold">Subir OT — CS</div>
+                        <div class="text-[10px] text-blue-100 font-medium">Centro de Servicio</div>
+                    </div>
+                </button>
+
+                <!-- Botón Subir OT MAESTROS -->
+                <button type="button" onclick="document.getElementById('file-input-maestros').click()" class="bg-purple-600 hover:bg-purple-500 active:scale-95 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shadow-purple-600/20 flex items-center gap-2 cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    <div class="text-left leading-tight">
+                        <div class="font-extrabold">Subir OT — MAESTROS</div>
+                        <div class="text-[10px] text-purple-100 font-medium">Domicilio / Proyectos</div>
+                    </div>
+                </button>
             </div>
         </header>
+
+        <!-- Loading Indicator -->
+        <div id="loading" class="hidden flex items-center justify-center py-6 glass-card">
+            <div class="loader mr-3"></div>
+            <span id="loading-text" class="text-indigo-600 dark:text-indigo-400 font-semibold text-sm">Subiendo archivo y actualizando módulos...</span>
+        </div>
 
         <!-- KPIs -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div class="glass-card p-6 border-l-4 border-l-indigo-500">
-                <h3 class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Total Archivos</h3>
+                <h3 class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Total Archivos Activos</h3>
                 <p id="kpi-total-files" class="text-3xl font-black text-slate-900 dark:text-white">0</p>
+                <p class="text-[11px] font-semibold text-slate-400 mt-1">Sincronizados en los 5 módulos</p>
             </div>
             <div class="glass-card p-6 border-l-4 border-l-blue-500">
                 <h3 class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Centro de Servicios (CS)</h3>
                 <p id="kpi-cs-files" class="text-3xl font-black text-blue-600 dark:text-blue-400">0</p>
+                <p class="text-[11px] font-semibold text-slate-400 mt-1">Meses evaluados en CS</p>
             </div>
             <div class="glass-card p-6 border-l-4 border-l-purple-500">
-                <h3 class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Maestros</h3>
+                <h3 class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Unidad MAESTROS</h3>
                 <p id="kpi-maestros-files" class="text-3xl font-black text-purple-600 dark:text-purple-400">0</p>
+                <p class="text-[11px] font-semibold text-slate-400 mt-1">Meses evaluados en Maestros</p>
             </div>
             <div class="glass-card p-6 border-l-4 border-l-teal-500">
                 <h3 class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Espacio Ocupado</h3>
                 <p id="kpi-total-size" class="text-3xl font-black text-teal-600 dark:text-teal-400">0 KB</p>
+                <p class="text-[11px] font-semibold text-slate-400 mt-1">Almacenamiento en servidor</p>
+            </div>
+        </div>
+
+        <!-- Matriz de Cobertura Mensual por Unidad -->
+        <div class="glass-card p-6 space-y-4">
+            <div class="flex flex-wrap justify-between items-center gap-2">
+                <div>
+                    <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                        Mapa de Cobertura Mensual (CS vs MAESTROS)
+                    </h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Verifique de un vistazo qué meses están cargados por unidad de negocio.</p>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-xs">
+                    <thead>
+                        <tr>
+                            <th class="w-44">Unidad / Año</th>
+                            <th class="text-center px-2">Ene</th>
+                            <th class="text-center px-2">Feb</th>
+                            <th class="text-center px-2">Mar</th>
+                            <th class="text-center px-2">Abr</th>
+                            <th class="text-center px-2">May</th>
+                            <th class="text-center px-2">Jun</th>
+                            <th class="text-center px-2">Jul</th>
+                            <th class="text-center px-2">Ago</th>
+                            <th class="text-center px-2">Sep</th>
+                            <th class="text-center px-2">Oct</th>
+                            <th class="text-center px-2">Nov</th>
+                            <th class="text-center px-2">Dic</th>
+                        </tr>
+                    </thead>
+                    <tbody id="coverage-matrix-body"></tbody>
+                </table>
             </div>
         </div>
 
@@ -187,16 +262,16 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <!-- Search -->
                 <div class="md:col-span-2">
-                    <p class="text-xs text-slate-500 dark:text-slate-400 uppercase font-bold mb-1">Buscar por nombre</p>
-                    <input type="text" id="search-filename" placeholder="Ej. ABRIL, 2025..." class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500">
+                    <p class="text-xs text-slate-500 dark:text-slate-400 uppercase font-bold mb-1">Buscar por nombre o mes</p>
+                    <input type="text" id="search-filename" placeholder="Ej. AGOSTO, MAESTROS, 2026..." class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500">
                 </div>
                 <!-- Unit Filter -->
                 <div>
                     <p class="text-xs text-slate-500 dark:text-slate-400 uppercase font-bold mb-1">Unidad de Negocio</p>
                     <select id="filter-unit" class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 cursor-pointer">
-                        <option value="ALL">Todas</option>
+                        <option value="ALL">Todas (CS + MAESTROS)</option>
                         <option value="CS">Centro de Servicios (CS)</option>
-                        <option value="MAESTROS">Maestros</option>
+                        <option value="MAESTROS">Maestros (Domicilio)</option>
                     </select>
                 </div>
                 <!-- Year Filter -->
@@ -242,9 +317,6 @@
 
     </div>
 
-    <!-- Data Preloading script generated by Python -->
-    <script src="data.js"></script>
-
     <!-- Script de Gestión de Tema -->
     <script>
         function updateThemeUI() {
@@ -279,17 +351,84 @@
     <!-- Page Controller Logic -->
     <script>
         let allFiles = [];
+        const MESES_ORDEN = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
+
+        async function uploadFilesForUnit(files, unidad) {
+            const excelFiles = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.xlsx') || f.name.toLowerCase().endsWith('.xls'));
+            if (excelFiles.length === 0) return;
+
+            const loading = document.getElementById('loading');
+            const loadingText = document.getElementById('loading-text');
+            loading.classList.remove('hidden');
+            loadingText.textContent = `Subiendo ${excelFiles.length} archivo(s) a Unidad ${unidad} y actualizando los 5 módulos...`;
+
+            try {
+                for (const file of excelFiles) {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('unidad_negocio', unidad);
+                    const nameUpper = file.name.toUpperCase();
+                    const yMatch = nameUpper.match(/(20\d{2})/);
+                    const anio = yMatch ? yMatch[1] : String(new Date().getFullYear());
+                    const mes = MESES_ORDEN.find(m => nameUpper.includes(m)) || '';
+                    formData.append('anio', anio);
+                    if (mes) formData.append('mes', mes);
+
+                    const res = await fetch('/upload', { method: 'POST', body: formData });
+                    if (!res.ok) throw new Error('Error al subir ' + file.name);
+                }
+
+                const poll = setInterval(async () => {
+                    const r = await fetch('/status');
+                    const d = await r.json();
+                    if (!d.processing) {
+                        clearInterval(poll);
+                        window.location.href = window.location.pathname + '?v=' + new Date().getTime();
+                    }
+                }, 3000);
+            } catch (e) {
+                alert('Error: ' + e.message);
+                loading.classList.add('hidden');
+            }
+        }
+
+        function renderCoverageMatrix() {
+            const tbody = document.getElementById('coverage-matrix-body');
+            if (!tbody) return;
+
+            const rowsConfig = [
+                { unidad: 'CS', anio: '2025', label: 'CS — 2025', badgeClass: 'badge-cs' },
+                { unidad: 'CS', anio: '2026', label: 'CS — 2026', badgeClass: 'badge-cs' },
+                { unidad: 'MAESTROS', anio: '2026', label: 'MAESTROS — 2026', badgeClass: 'badge-maestros' }
+            ];
+
+            const fileSet = new Set(allFiles.map(f => `${f.unidad}-${f.anio}-${f.mes}`));
+
+            tbody.innerHTML = rowsConfig.map(cfg => {
+                const cells = MESES_ORDEN.map(m => {
+                    const exists = fileSet.has(`${cfg.unidad}-${cfg.anio}-${m}`);
+                    if (exists) {
+                        return `<td class="text-center px-2 py-2.5"><span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-bold" title="${cfg.unidad} ${m} ${cfg.anio}: Cargado">✓</span></td>`;
+                    }
+                    return `<td class="text-center px-2 py-2.5"><span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-600 font-bold" title="${cfg.unidad} ${m} ${cfg.anio}: Sin archivo">-</span></td>`;
+                }).join('');
+
+                return `<tr>
+                    <td class="font-bold py-2.5 px-4"><span class="badge ${cfg.badgeClass}">${cfg.label}</span></td>
+                    ${cells}
+                </tr>`;
+            }).join('');
+        }
 
         function initPage() {
-            // Read from window.PRELOADED_META which has the listaArchivos
             const meta = window.PRELOADED_META;
             if (meta && meta.listaArchivos) {
                 allFiles = meta.listaArchivos;
-            } else {
-                console.warn("No metadata found in PRELOADED_META");
             }
 
-            // Populate Year filter
+            document.getElementById('file-input-cs')?.addEventListener('change', (e) => uploadFilesForUnit(e.target.files, 'CS'));
+            document.getElementById('file-input-maestros')?.addEventListener('change', (e) => uploadFilesForUnit(e.target.files, 'MAESTROS'));
+
             const years = [...new Set(allFiles.map(f => f.anio))].sort();
             const yearFilter = document.getElementById('filter-year');
             years.forEach(y => {
@@ -299,15 +438,12 @@
                 yearFilter.appendChild(opt);
             });
 
-            // Set up event listeners
             document.getElementById('search-filename').addEventListener('input', renderTable);
             document.getElementById('filter-unit').addEventListener('change', renderTable);
             document.getElementById('filter-year').addEventListener('change', renderTable);
 
-            // Compute KPIs
             updateKPIs();
-
-            // Initial render
+            renderCoverageMatrix();
             renderTable();
         }
 
@@ -337,7 +473,7 @@
             const tbody = document.getElementById('files-table-body');
 
             const filtered = allFiles.filter(f => {
-                const matchSearch = !searchQuery || f.nombre.toLowerCase().includes(searchQuery) || f.mes.toLowerCase().includes(searchQuery);
+                const matchSearch = !searchQuery || f.nombre.toLowerCase().includes(searchQuery) || f.mes.toLowerCase().includes(searchQuery) || f.unidad.toLowerCase().includes(searchQuery);
                 const matchUnit = unitFilter === 'ALL' || f.unidad === unitFilter;
                 const matchYear = yearFilter === 'ALL' || f.anio == yearFilter;
                 return matchSearch && matchUnit && matchYear;
@@ -358,8 +494,8 @@
 
             tbody.innerHTML = filtered.map(f => {
                 const unitBadge = f.unidad === 'CS' 
-                    ? '<span class="badge badge-cs">CS (Servicios)</span>'
-                    : '<span class="badge badge-maestros">Maestros</span>';
+                    ? '<span class="badge badge-cs">CS (Centro de Servicio)</span>'
+                    : '<span class="badge badge-maestros">MAESTROS (Domicilio)</span>';
                 
                 const sizeText = f.tamano_kb > 1024 
                     ? `${(f.tamano_kb / 1024).toFixed(1)} MB` 
@@ -384,7 +520,12 @@
             }).join('');
         }
 
-        document.addEventListener('DOMContentLoaded', initPage);
+        (function() {
+            var s = document.createElement('script');
+            s.src = 'data.js?v=' + new Date().getTime();
+            s.onload = initPage;
+            document.body.appendChild(s);
+        })();
     </script>
 </body>
 </html>
