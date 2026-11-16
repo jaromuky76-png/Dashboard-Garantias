@@ -359,59 +359,6 @@ class DashboardServer(SimpleHTTPRequestHandler):
                     with jobs_lock:
                         pending_jobs = max(0, pending_jobs - 1)
                         is_processing = pending_jobs > 0
-pending_jobs = 0
-processing_lock = threading.Lock()
-jobs_lock = threading.Lock()
-last_sync_status = "idle"
-last_sync_message = ""
-
-
-def sync_files_to_github(files_list, commit_msg):
-    """Commits and pushes updated JS data files to GitHub when GITHUB_TOKEN is valid."""
-    global last_sync_status, last_sync_message
-    try:
-        subprocess.run(["git", "add"] + files_list, cwd=BASE_DIR, check=False)
-        status = subprocess.run(["git", "status", "--porcelain"], cwd=BASE_DIR, capture_output=True, text=True)
-        if not status.stdout.strip():
-            last_sync_status = "ok"
-            last_sync_message = "Sin cambios nuevos para guardar en GitHub."
-            print(last_sync_message)
-            return True
-
-        subprocess.run(["git", "config", "user.name", "Render Server"], cwd=BASE_DIR, check=False)
-        subprocess.run(["git", "config", "user.email", "server@render.com"], cwd=BASE_DIR, check=False)
-
-        commit_res = subprocess.run(["git", "commit", "-m", commit_msg], cwd=BASE_DIR, capture_output=True, text=True)
-        if commit_res.returncode != 0:
-            print(f"Commit error: {commit_res.stderr}")
-
-        token = os.environ.get("GITHUB_TOKEN", "").strip()
-        if not token:
-            last_sync_status = "warning"
-            last_sync_message = "Actualizado solo en sesión actual (falta GITHUB_TOKEN en Render o usa SINCRONIZAR_ONEDRIVE.bat en tu PC para guardado permanente)."
-            print(last_sync_message)
-            return False
-
-        repo_url = f"https://jaromuky76-png:{token}@github.com/jaromuky76-png/Dashboard-Garantias.git"
-        # Sincronizar cambios remotos si el repo tuvo commits externos antes de hacer push
-        subprocess.run(["git", "pull", "--rebase", repo_url, "master"], cwd=BASE_DIR, capture_output=True, text=True)
-
-        push_res = subprocess.run(["git", "push", repo_url, "HEAD:master"], cwd=BASE_DIR, capture_output=True, text=True)
-        if push_res.returncode == 0:
-            last_sync_status = "ok"
-            last_sync_message = "Datos guardados permanentemente en GitHub."
-            print("GitHub OK")
-            return True
-        else:
-            last_sync_status = "warning"
-            last_sync_message = "Datos procesados en esta sesión, pero el GITHUB_TOKEN de Render está vencido/inválido (se perderán si Render hiberna). Actualiza GITHUB_TOKEN en Render o usa SINCRONIZAR_ONEDRIVE.bat."
-            print(f"Push error: {push_res.stderr}")
-            return False
-    except Exception as e:
-        last_sync_status = "warning"
-        last_sync_message = f"Error al sincronizar con GitHub: {e}"
-        print(last_sync_message)
-        return False
 
             mes_num = MESES_MAP.get(mes_nombre, 0)
             t = threading.Thread(target=run_updater, args=(target_path, unidad, anio_str, mes_nombre, mes_num))
