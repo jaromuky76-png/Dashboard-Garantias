@@ -197,9 +197,9 @@ function populateBrandSelector() {
     container.innerHTML = allUniqueBrands.map(brand => {
         const checked = selectedBrands.has(brand) ? 'checked' : '';
         return `
-            <label class="brand-checkbox-item flex items-center space-x-2 px-2 py-1 hover:bg-slate-700/50 rounded cursor-pointer transition-colors" data-brand="${brand}">
-                <input type="checkbox" value="${brand}" ${checked} class="brand-checkbox rounded border-slate-600 bg-slate-900 text-blue-500 focus:ring-0 focus:ring-offset-0">
-                <span class="text-sm text-slate-300 select-none">${brand}</span>
+            <label class="brand-checkbox-item flex items-center space-x-2 px-2 py-1.5 hover:bg-blue-50 dark:hover:bg-slate-700/50 rounded-lg cursor-pointer transition-colors" data-brand="${brand}">
+                <input type="checkbox" value="${brand}" ${checked} class="brand-checkbox rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-blue-600 focus:ring-0 focus:ring-offset-0">
+                <span class="text-xs font-medium text-slate-700 dark:text-slate-200 select-none">${brand}</span>
             </label>
         `;
     }).join('');
@@ -331,7 +331,7 @@ function renderCharts(aggregated) {
                     legend: { display: false },
                     tooltip: {
                         callbacks: {
-                            afterLabel: ctx => filteredAgg[ctx.dataIndex]?.descripcion || ''
+                            afterLabel: ctx => topFreq[ctx.dataIndex]?.descripcion || ''
                         }
                     }
                 },
@@ -426,7 +426,14 @@ function renderTable() {
         const codeDisplay = item.codigo !== 'N/A'
             ? `<span class="font-mono font-semibold text-blue-600 dark:text-blue-400">${item.codigo}</span>`
             : `<span class="text-slate-400 italic">N/A</span>`;
-        const otDetailsDisplay = (item.otDetails || []).map(d => `<span class="whitespace-nowrap px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded border border-slate-200 dark:border-slate-700 mr-1 text-[11px]">${d.mes}: ${d.ot}</span>`).join(' ');
+        const otList = item.otDetails || [];
+        const visibleOts = otList.slice(0, 2);
+        const remOts = otList.length - 2;
+        let otDetailsDisplay = visibleOts.map(d => `<span class="inline-block whitespace-nowrap px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-md border border-slate-200 dark:border-slate-700 mr-1 mb-1 text-[11px] font-mono">${d.mes}: <strong class="text-slate-900 dark:text-white">${d.ot}</strong></span>`).join('');
+        if (remOts > 0) {
+            const fullTip = otList.map(d => `${d.mes}: OT ${d.ot}`).join('&#10;');
+            otDetailsDisplay += `<span class="inline-block whitespace-nowrap px-2 py-0.5 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 rounded-md border border-blue-200 dark:border-blue-800 text-[10px] font-bold cursor-help mb-1" title="${fullTip}">+${remOts} más</span>`;
+        }
 
         return `
         <tr class="${isOrdered ? 'already-ordered' : ''} hover:bg-blue-50/70 dark:hover:bg-slate-800/40 transition-colors" data-key="${item.key}">
@@ -492,10 +499,10 @@ function updateCutoffStatus() {
     if (cutoffState.month > 0 || orderedCount > 0) {
         statusDiv.classList.remove('hidden');
         const cutoffLabel = cutoffState.month > 0
-            ? `Último pedido hasta: <strong class="text-emerald-400">${MESES[cutoffState.month]} ${cutoffState.year}</strong>`
+            ? `Último pedido hasta: <strong class="text-emerald-700 dark:text-emerald-400">${MESES[cutoffState.month]} ${cutoffState.year}</strong>`
             : 'Sin corte definido';
-        statusDiv.innerHTML = `${cutoffLabel} &nbsp;·&nbsp; <span class="text-blue-300">${orderedCount} ítems ya pedidos</span>
-            &nbsp;·&nbsp; <span class="text-emerald-400 font-bold">${toOrderCount} ítems para el nuevo pedido</span>`;
+        statusDiv.innerHTML = `${cutoffLabel} &nbsp;·&nbsp; <span class="text-blue-700 dark:text-blue-300 font-semibold">${orderedCount} ítems ya pedidos</span>
+            &nbsp;·&nbsp; <span class="text-emerald-700 dark:text-emerald-400 font-bold">${toOrderCount} ítems para el nuevo pedido</span>`;
     } else {
         statusDiv.classList.add('hidden');
     }
@@ -556,5 +563,5 @@ function resetOrderHistory() {
 }
 function renderEmptyTable(msg) {
     const el = document.getElementById('table-body');
-    if (el) el.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-500 italic">${msg}</td></tr>`;
+    if (el) el.innerHTML = `<tr><td colspan="9" class="text-center py-8 text-slate-500 italic">${msg}</td></tr>`;
 }
