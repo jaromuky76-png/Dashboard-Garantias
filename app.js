@@ -160,10 +160,15 @@ async function processFiles(excelFiles, unidad) {
         
         const pollStatus = setInterval(async () => {
             try {
-                const res = await fetch('/status');
+                const res = await fetch('/status?t=' + new Date().getTime());
                 const data = await res.json();
                 if (!data.processing) {
                     clearInterval(pollStatus);
+                    if (data.last_sync_status === 'warning' && data.last_sync_message) {
+                        sessionStorage.setItem('sync_warning_msg', data.last_sync_message);
+                    } else if (data.last_sync_status === 'ok') {
+                        sessionStorage.removeItem('sync_warning_msg');
+                    }
                     window.location.href = window.location.pathname + '?v=' + new Date().getTime();
                 }
             } catch(e) {
@@ -772,8 +777,33 @@ function exportFilteredToExcel() {
 }
 
 // Start app
+async function checkSyncBanner() {
+    const banner = document.getElementById('sync-warning-banner');
+    const bannerText = document.getElementById('sync-warning-text');
+    if (!banner || !bannerText) return;
+
+    let msg = sessionStorage.getItem('sync_warning_msg');
+    if (!msg) {
+        try {
+            const res = await fetch('/status?t=' + new Date().getTime());
+            if (res.ok) {
+                const st = await res.json();
+                if (st.last_sync_status === 'warning' && st.last_sync_message) {
+                    msg = st.last_sync_message;
+                }
+            }
+        } catch (e) {}
+    }
+
+    if (msg) {
+        bannerText.textContent = msg;
+        banner.classList.remove('hidden');
+    }
+}
+
 function startApp() {
     initEvents();
+    checkSyncBanner();
     
     const checkData = () => {
         if (window.PRELOADED_DATA && window.PRELOADED_DATA.length > 0) {

@@ -198,6 +198,31 @@
             <span id="loading-text" class="text-indigo-600 dark:text-indigo-400 font-semibold text-sm">Subiendo archivo y actualizando módulos...</span>
         </div>
 
+        <!-- Banner de Aviso de Persistencia -->
+        <div id="sync-warning-banner" class="hidden glass-card p-4 border-l-4 border-l-amber-500 bg-amber-50/90 dark:bg-amber-950/30 flex items-start justify-between gap-3">
+            <div class="flex items-start gap-3">
+                <svg class="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                <div class="text-xs text-amber-900 dark:text-amber-200">
+                    <p class="font-bold">Aviso de Guardado Permanente</p>
+                    <p id="sync-warning-text" class="mt-0.5"></p>
+                </div>
+            </div>
+            <button type="button" onclick="document.getElementById('sync-warning-banner').classList.add('hidden')" class="text-amber-700 dark:text-amber-300 font-bold text-xs px-2 py-1 rounded hover:bg-amber-100 dark:hover:bg-amber-900/40 cursor-pointer">Cerrar</button>
+        </div>
+
+        <!-- Tarjeta Informativa: Sincronización Permanente OneDrive -> Web -->
+        <div class="glass-card p-4 border-l-4 border-l-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/20 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-start gap-3">
+                <div class="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path></svg>
+                </div>
+                <div class="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                    <p class="font-extrabold text-slate-900 dark:text-white">Flujo Permanente sin Pérdidas (OneDrive Compartido &#8594; Web):</p>
+                    <p class="mt-0.5">Guarda los archivos Excel en las carpetas compartidas de OneDrive (<strong>CS</strong> y <strong>MAESTROS</strong>) y ejecuta <strong>SINCRONIZAR_ONEDRIVE.bat</strong> en tu PC. La data queda grabada permanentemente en GitHub aunque el servidor hiberne.</p>
+                </div>
+            </div>
+        </div>
+
         <!-- KPIs -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div class="glass-card p-6 border-l-4 border-l-indigo-500">
@@ -379,10 +404,15 @@
                 }
 
                 const poll = setInterval(async () => {
-                    const r = await fetch('/status');
+                    const r = await fetch('/status?t=' + new Date().getTime());
                     const d = await r.json();
                     if (!d.processing) {
                         clearInterval(poll);
+                        if (d.last_sync_status === 'warning' && d.last_sync_message) {
+                            sessionStorage.setItem('sync_warning_msg', d.last_sync_message);
+                        } else if (d.last_sync_status === 'ok') {
+                            sessionStorage.removeItem('sync_warning_msg');
+                        }
                         window.location.href = window.location.pathname + '?v=' + new Date().getTime();
                     }
                 }, 3000);
@@ -392,15 +422,43 @@
             }
         }
 
+        async function checkSyncBanner() {
+            const banner = document.getElementById('sync-warning-banner');
+            const bannerText = document.getElementById('sync-warning-text');
+            if (!banner || !bannerText) return;
+            let msg = sessionStorage.getItem('sync_warning_msg');
+            if (!msg) {
+                try {
+                    const res = await fetch('/status?t=' + new Date().getTime());
+                    if (res.ok) {
+                        const st = await res.json();
+                        if (st.last_sync_status === 'warning' && st.last_sync_message) msg = st.last_sync_message;
+                    }
+                } catch (e) {}
+            }
+            if (msg) {
+                bannerText.textContent = msg;
+                banner.classList.remove('hidden');
+            }
+        }
+
         function renderCoverageMatrix() {
             const tbody = document.getElementById('coverage-matrix-body');
             if (!tbody) return;
 
-            const rowsConfig = [
-                { unidad: 'CS', anio: '2025', label: 'CS — 2025', badgeClass: 'badge-cs' },
-                { unidad: 'CS', anio: '2026', label: 'CS — 2026', badgeClass: 'badge-cs' },
-                { unidad: 'MAESTROS', anio: '2026', label: 'MAESTROS — 2026', badgeClass: 'badge-maestros' }
-            ];
+            const yearsSet = new Set(['2025', '2026', ...allFiles.map(f => String(f.anio)).filter(Boolean)]);
+            const yearsSorted = Array.from(yearsSet).sort();
+            const rowsConfig = [];
+            ['CS', 'MAESTROS'].forEach(unidad => {
+                yearsSorted.forEach(anio => {
+                    rowsConfig.push({
+                        unidad,
+                        anio,
+                        label: `${unidad} — ${anio}`,
+                        badgeClass: unidad === 'CS' ? 'badge-cs' : 'badge-maestros'
+                    });
+                });
+            });
 
             const fileSet = new Set(allFiles.map(f => `${f.unidad}-${f.anio}-${f.mes}`));
 
@@ -421,6 +479,7 @@
         }
 
         function initPage() {
+            checkSyncBanner();
             const meta = window.PRELOADED_META;
             if (meta && meta.listaArchivos) {
                 allFiles = meta.listaArchivos;
@@ -497,9 +556,10 @@
                     ? '<span class="badge badge-cs">CS (Centro de Servicio)</span>'
                     : '<span class="badge badge-maestros">MAESTROS (Domicilio)</span>';
                 
-                const sizeText = f.tamano_kb > 1024 
-                    ? `${(f.tamano_kb / 1024).toFixed(1)} MB` 
-                    : `${f.tamano_kb.toFixed(1)} KB`;
+                const kb = Number(f.tamano_kb || 0);
+                const sizeText = kb <= 0
+                    ? 'Sincronizado'
+                    : (kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb.toFixed(1)} KB`);
 
                 return `
                     <tr class="hover:bg-indigo-50/70 dark:hover:bg-slate-800/50 transition-colors">

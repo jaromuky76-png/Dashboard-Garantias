@@ -250,43 +250,86 @@ def load_existing_json(filepath, var_name):
         print(f"Error cargando {filepath}: {e}")
     return []
 
-def scan_stored_files():
-    folder_ot = os.environ.get('OT_BASE_DIR', os.path.abspath(os.path.join(BASE_DIR, "..", "OT")))
-    file_registry = []
-    if not os.path.exists(folder_ot):
-        return file_registry
-    
-    for root, dirs, files in os.walk(folder_ot):
-        for fl in sorted(files):
-            if (fl.endswith(".xlsx") or fl.endswith(".xls")) and not fl.startswith("~") and "TABLA OFERTA" not in fl.upper():
-                path = os.path.join(root, fl)
-                try:
-                    rel_path = os.path.relpath(root, folder_ot)
-                    parts = rel_path.split(os.sep)
-                    if len(parts) < 3:
-                        continue
-                    
-                    unidad = parts[0].upper()
-                    anio = parts[1]
-                    mes = parts[2].upper()
-                    if unidad not in ("CS", "MAESTROS"):
-                        continue
+def load_existing_meta_files(filepath, meta_var_name="PRELOADED_META"):
+    if not os.path.exists(filepath):
+        return []
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            content = f.read()
+            match = re.search(meta_var_name + r'\s*=\s*(\{.*\});', content, flags=re.DOTALL)
+            if match:
+                meta_obj = json.loads(match.group(1))
+                return meta_obj.get('listaArchivos', [])
+    except Exception as e:
+        print(f"Error cargando meta de {filepath}: {e}")
+    return []
 
-                    file_stat = os.stat(path)
-                    mod_time = datetime.datetime.fromtimestamp(file_stat.st_mtime).strftime('%Y-%m-%d %H:%M')
-                    file_size_kb = round(file_stat.st_size / 1024, 1)
-                    
-                    file_registry.append({
-                        "nombre": fl,
-                        "unidad": unidad,
-                        "anio": anio,
-                        "mes": mes,
-                        "tamano_kb": file_size_kb,
-                        "modificado": mod_time
-                    })
-                except Exception as e:
-                    print(f"Error scanning file {path}: {e}")
-    return file_registry
+def scan_stored_files(data_records=None):
+    folder_ot = os.environ.get('OT_BASE_DIR', os.path.abspath(os.path.join(BASE_DIR, "..", "OT")))
+    merged_map = {}
+
+    # 1. Conservar historial previo guardado en PRELOADED_META (clave para Render donde no viven los .xlsx)
+    for item in load_existing_meta_files(output_js, "PRELOADED_META"):
+        u = str(item.get('unidad', '')).upper()
+        a = str(item.get('anio', ''))
+        m = str(item.get('mes', '')).upper()
+        if u in ("CS", "MAESTROS") and a and m and m != "UNKNOWN":
+            merged_map[(u, a, m)] = item
+
+    # 2. Garantizar entrada por cada período que ya exista dentro de data_records
+    if data_records:
+        for row in data_records:
+            u = str(row.get('unidad_negocio', '')).upper()
+            a = str(row.get('anio', ''))
+            m = str(row.get('mes', '')).upper()
+            if u in ("CS", "MAESTROS") and a and m and (u, a, m) not in merged_map:
+                default_name = f"ESTADO DE OT {m}.xlsx" if u == "CS" else f"ESTADO DE OT MAESTROS {m}.xlsx"
+                merged_map[(u, a, m)] = {
+                    "nombre": default_name,
+                    "unidad": u,
+                    "anio": a,
+                    "mes": m,
+                    "tamano_kb": 0.0,
+                    "modificado": "Sincronizado"
+                }
+
+    # 3. Escanear carpeta fisica local/servidor para actualizar o agregar archivos presentes en disco
+    if os.path.exists(folder_ot):
+        for root, dirs, files in os.walk(folder_ot):
+            for fl in sorted(files):
+                if (fl.endswith(".xlsx") or fl.endswith(".xls")) and not fl.startswith("~") and "TABLA OFERTA" not in fl.upper():
+                    path = os.path.join(root, fl)
+                    try:
+                        rel_path = os.path.relpath(root, folder_ot)
+                        parts = rel_path.split(os.sep)
+                        if len(parts) < 3:
+                            continue
+                        
+                        unidad = parts[0].upper()
+                        anio = str(parts[1])
+                        mes = parts[2].upper()
+                        if unidad not in ("CS", "MAESTROS"):
+                            continue
+
+                        file_stat = os.stat(path)
+                        mod_time = datetime.datetime.fromtimestamp(file_stat.st_mtime).strftime('%Y-%m-%d %H:%M')
+                        file_size_kb = round(file_stat.st_size / 1024, 1)
+                        
+                        merged_map[(unidad, anio, mes)] = {
+                            "nombre": fl,
+                            "unidad": unidad,
+                            "anio": anio,
+                            "mes": mes,
+                            "tamano_kb": file_size_kb,
+                            "modificado": mod_time
+                        }
+                    except Exception as e:
+                        print(f"Error scanning file {path}: {e}")
+
+    return sorted(
+        merged_map.values(),
+        key=lambda x: (x["unidad"], str(x["anio"]), MESES_MAP.get(x["mes"], 99))
+    )
 
 def save_json(filepath, var_name, data, desc, meta_var_name, file_registry=None):
     try:
@@ -669,7 +712,8 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
                             "fecha_cierre": ff_raw if isinstance(ff_raw, str) else "",
                             "dias_diagnostico": dias_diag,
                             "dias_cierre": dias_cierre,
-                            "link": link
+                            "link": link,
+                            "unidad_negocio": unidad.upper()
                         })
                         cnt_rep += 1
 
@@ -683,7 +727,7 @@ def process_single_file(filepath, unidad, anio, mes, mes_num):
 
     # Guardar cache y archivos
     save_cache(api_cache)
-    file_reg = scan_stored_files()
+    file_reg = scan_stored_files(garantia_data)
     save_json(output_js, 'PRELOADED_DATA', garantia_data, "Garantias", "PRELOADED_META", file_reg)
     save_json(output_svc, 'PRELOADED_SERVICIO', servicio_data, "Servicios", "PRELOADED_META_SVC", file_reg)
     save_json(output_pts, 'partsData', parts_data, "Repuestos", "PARTS_META", file_reg)

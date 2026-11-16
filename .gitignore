@@ -8,7 +8,7 @@ venv/
 .env
 
 # Temporal Uploads
-temp_upload.xlsx
+temp_upload*.xlsx
 
 # System
 .DS_Store

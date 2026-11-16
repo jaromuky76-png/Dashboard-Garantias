@@ -36,6 +36,59 @@ MESES_MAP = {
 MESES_INV = {v: k for k, v in MESES_MAP.items()}
 
 is_processing = False
+pending_jobs = 0
+processing_lock = threading.Lock()
+jobs_lock = threading.Lock()
+last_sync_status = "idle"
+last_sync_message = ""
+
+
+def sync_files_to_github(files_list, commit_msg):
+    """Commits and pushes updated JS data files to GitHub when GITHUB_TOKEN is valid."""
+    global last_sync_status, last_sync_message
+    try:
+        subprocess.run(["git", "add"] + files_list, cwd=BASE_DIR, check=False)
+        status = subprocess.run(["git", "status", "--porcelain"], cwd=BASE_DIR, capture_output=True, text=True)
+        if not status.stdout.strip():
+            last_sync_status = "ok"
+            last_sync_message = "Sin cambios nuevos para guardar en GitHub."
+            print(last_sync_message)
+            return True
+
+        subprocess.run(["git", "config", "user.name", "Render Server"], cwd=BASE_DIR, check=False)
+        subprocess.run(["git", "config", "user.email", "server@render.com"], cwd=BASE_DIR, check=False)
+
+        commit_res = subprocess.run(["git", "commit", "-m", commit_msg], cwd=BASE_DIR, capture_output=True, text=True)
+        if commit_res.returncode != 0:
+            print(f"Commit error: {commit_res.stderr}")
+
+        token = os.environ.get("GITHUB_TOKEN", "").strip()
+        if not token:
+            last_sync_status = "warning"
+            last_sync_message = "Actualizado solo en sesión actual (falta GITHUB_TOKEN en Render o usa SINCRONIZAR_ONEDRIVE.bat en tu PC para guardado permanente)."
+            print(last_sync_message)
+            return False
+
+        repo_url = f"https://jaromuky76-png:{token}@github.com/jaromuky76-png/Dashboard-Garantias.git"
+        # Sincronizar cambios remotos si el repo tuvo commits externos antes de hacer push
+        subprocess.run(["git", "pull", "--rebase", repo_url, "master"], cwd=BASE_DIR, capture_output=True, text=True)
+
+        push_res = subprocess.run(["git", "push", repo_url, "HEAD:master"], cwd=BASE_DIR, capture_output=True, text=True)
+        if push_res.returncode == 0:
+            last_sync_status = "ok"
+            last_sync_message = "Datos guardados permanentemente en GitHub."
+            print("GitHub OK")
+            return True
+        else:
+            last_sync_status = "warning"
+            last_sync_message = "Datos procesados en esta sesión, pero el GITHUB_TOKEN de Render está vencido/inválido (se perderán si Render hiberna). Actualiza GITHUB_TOKEN en Render o usa SINCRONIZAR_ONEDRIVE.bat."
+            print(f"Push error: {push_res.stderr}")
+            return False
+    except Exception as e:
+        last_sync_status = "warning"
+        last_sync_message = f"Error al sincronizar con GitHub: {e}"
+        print(last_sync_message)
+        return False
 
 
 def parse_multipart_streaming(rfile, content_length, boundary_bytes, temp_xlsx_path):
@@ -187,11 +240,16 @@ class DashboardServer(SimpleHTTPRequestHandler):
         super().end_headers()
 
     def do_GET(self):
-        if self.path == '/status':
+        if self.path.split('?')[0] == '/status':
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps({'processing': is_processing}).encode())
+            self.wfile.write(json.dumps({
+                'processing': is_processing or pending_jobs > 0,
+                'pending_jobs': pending_jobs,
+                'last_sync_status': last_sync_status,
+                'last_sync_message': last_sync_message
+            }).encode())
         elif self.path == '/api/logs':
             self.send_response(200)
             self.send_header('Content-type', 'text/plain; charset=utf-8')
@@ -231,7 +289,8 @@ class DashboardServer(SimpleHTTPRequestHandler):
                 return
             boundary_bytes = boundary_match.group(1).encode()
 
-            temp_path = os.path.join(BASE_DIR, "temp_upload.xlsx")
+            import uuid
+            temp_path = os.path.join(BASE_DIR, f"temp_upload_{uuid.uuid4().hex}.xlsx")
 
             # TRUE STREAMING: file goes from socket to disk, never into RAM
             filename, unidad, anio_from_form, mes_from_form = parse_multipart_streaming(
@@ -240,6 +299,8 @@ class DashboardServer(SimpleHTTPRequestHandler):
             gc.collect()
 
             if not filename or not os.path.exists(temp_path) or os.path.getsize(temp_path) == 0:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
                 self.send_error(400, "No file uploaded or file empty")
                 return
 
@@ -267,62 +328,90 @@ class DashboardServer(SimpleHTTPRequestHandler):
                 except Exception:
                     pass
 
-            os.rename(temp_path, target_path)
+            os.replace(temp_path, target_path)
             print(f"Archivo guardado: {target_path}")
 
-            global is_processing
-            is_processing = True
+            global is_processing, pending_jobs
+            with jobs_lock:
+                pending_jobs += 1
+                is_processing = True
 
             def run_updater(path, u, a, m, m_num):
-                global is_processing
+                global is_processing, pending_jobs
                 try:
-                    import dashboard_updater
-                    print(f"Ejecutando actualización: {u} {m} {a}...")
-                    dashboard_updater.process_single_file(path, u, a, m, m_num)
-                    print("Actualización completada.")
+                    with processing_lock:
+                        import dashboard_updater
+                        print(f"Ejecutando actualización: {u} {m} {a}...")
+                        dashboard_updater.process_single_file(path, u, a, m, m_num)
+                        print("Actualización completada.")
 
-                    subprocess.run(
-                        ["git", "add", "data.js", "servicio_data.js", "parts_data.js",
-                         "seguimiento_data.js", "reportes_data.js", "api_cache.json"],
-                        cwd=BASE_DIR, check=False
-                    )
-                    status = subprocess.run(
-                        ["git", "status", "--porcelain"],
-                        cwd=BASE_DIR, capture_output=True, text=True
-                    )
-                    if status.stdout.strip():
-                        subprocess.run(["git", "config", "user.name", "Render Server"], cwd=BASE_DIR, check=False)
-                        subprocess.run(["git", "config", "user.email", "server@render.com"], cwd=BASE_DIR, check=False)
-                        
-                        commit_res = subprocess.run(
-                            ["git", "commit", "-m", f"Update data: {u} {m} {a}"],
-                            cwd=BASE_DIR, capture_output=True, text=True
+                        sync_files_to_github(
+                            ["data.js", "servicio_data.js", "parts_data.js",
+                             "seguimiento_data.js", "reportes_data.js", "api_cache.json"],
+                            f"Update data: {u} {m} {a}"
                         )
-                        if commit_res.returncode != 0:
-                            print(f"Commit error: {commit_res.stderr}")
-                            
-                        token = os.environ.get("GITHUB_TOKEN")
-                        if token:
-                            repo_url = f"https://jaromuky76-png:{token}@github.com/jaromuky76-png/Dashboard-Garantias.git"
-                            check_origin = subprocess.run(["git", "remote", "get-url", "origin"], cwd=BASE_DIR, capture_output=True)
-                            if check_origin.returncode == 0:
-                                subprocess.run(["git", "remote", "set-url", "origin", repo_url], cwd=BASE_DIR, check=False)
-                            else:
-                                subprocess.run(["git", "remote", "add", "origin", repo_url], cwd=BASE_DIR, check=False)
-                        push_res = subprocess.run(
-                            ["git", "push", "origin", "HEAD:master"],
-                            cwd=BASE_DIR, capture_output=True, text=True
-                        )
-                        print("GitHub OK" if push_res.returncode == 0 else f"Push error: {push_res.stderr}")
-                    else:
-                        print("Sin cambios nuevos para GitHub.")
 
                 except Exception as e:
                     print(f"Error en run_updater: {e}")
                     import traceback
                     traceback.print_exc()
                 finally:
-                    is_processing = False
+                    with jobs_lock:
+                        pending_jobs = max(0, pending_jobs - 1)
+                        is_processing = pending_jobs > 0
+pending_jobs = 0
+processing_lock = threading.Lock()
+jobs_lock = threading.Lock()
+last_sync_status = "idle"
+last_sync_message = ""
+
+
+def sync_files_to_github(files_list, commit_msg):
+    """Commits and pushes updated JS data files to GitHub when GITHUB_TOKEN is valid."""
+    global last_sync_status, last_sync_message
+    try:
+        subprocess.run(["git", "add"] + files_list, cwd=BASE_DIR, check=False)
+        status = subprocess.run(["git", "status", "--porcelain"], cwd=BASE_DIR, capture_output=True, text=True)
+        if not status.stdout.strip():
+            last_sync_status = "ok"
+            last_sync_message = "Sin cambios nuevos para guardar en GitHub."
+            print(last_sync_message)
+            return True
+
+        subprocess.run(["git", "config", "user.name", "Render Server"], cwd=BASE_DIR, check=False)
+        subprocess.run(["git", "config", "user.email", "server@render.com"], cwd=BASE_DIR, check=False)
+
+        commit_res = subprocess.run(["git", "commit", "-m", commit_msg], cwd=BASE_DIR, capture_output=True, text=True)
+        if commit_res.returncode != 0:
+            print(f"Commit error: {commit_res.stderr}")
+
+        token = os.environ.get("GITHUB_TOKEN", "").strip()
+        if not token:
+            last_sync_status = "warning"
+            last_sync_message = "Actualizado solo en sesión actual (falta GITHUB_TOKEN en Render o usa SINCRONIZAR_ONEDRIVE.bat en tu PC para guardado permanente)."
+            print(last_sync_message)
+            return False
+
+        repo_url = f"https://jaromuky76-png:{token}@github.com/jaromuky76-png/Dashboard-Garantias.git"
+        # Sincronizar cambios remotos si el repo tuvo commits externos antes de hacer push
+        subprocess.run(["git", "pull", "--rebase", repo_url, "master"], cwd=BASE_DIR, capture_output=True, text=True)
+
+        push_res = subprocess.run(["git", "push", repo_url, "HEAD:master"], cwd=BASE_DIR, capture_output=True, text=True)
+        if push_res.returncode == 0:
+            last_sync_status = "ok"
+            last_sync_message = "Datos guardados permanentemente en GitHub."
+            print("GitHub OK")
+            return True
+        else:
+            last_sync_status = "warning"
+            last_sync_message = "Datos procesados en esta sesión, pero el GITHUB_TOKEN de Render está vencido/inválido (se perderán si Render hiberna). Actualiza GITHUB_TOKEN en Render o usa SINCRONIZAR_ONEDRIVE.bat."
+            print(f"Push error: {push_res.stderr}")
+            return False
+    except Exception as e:
+        last_sync_status = "warning"
+        last_sync_message = f"Error al sincronizar con GitHub: {e}"
+        print(last_sync_message)
+        return False
 
             mes_num = MESES_MAP.get(mes_nombre, 0)
             t = threading.Thread(target=run_updater, args=(target_path, unidad, anio_str, mes_nombre, mes_num))
@@ -448,11 +537,7 @@ class DashboardServer(SimpleHTTPRequestHandler):
                     break
             if updated:
                 dashboard_updater.save_json(output_seg, 'PRELOADED_SEGUIMIENTO', seg_data, "Seguimiento", "SEGUIMIENTO_META")
-                subprocess.run(["git", "add", "seguimiento_data.js"], cwd=BASE_DIR, check=False)
-                status = subprocess.run(["git", "status", "--porcelain"], cwd=BASE_DIR, capture_output=True, text=True)
-                if status.stdout.strip():
-                    subprocess.run(["git", "commit", "-m", f"Update tracking OT {ot}"], cwd=BASE_DIR, check=False)
-                    subprocess.run(["git", "push", "origin", "HEAD:master"], cwd=BASE_DIR, check=False)
+                sync_files_to_github(["seguimiento_data.js"], f"Update tracking OT {ot}")
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
